@@ -1,9 +1,8 @@
 [build]
-  command = "pnpm build"
+  command = "pnpm prisma generate && pnpm build"
   publish = ".next"
 
 [build.environment]
-  PUPPETEER_SKIP_DOWNLOAD = "true"
   NODE_VERSION = "24"
 
 [[headers]]
