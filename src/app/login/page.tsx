@@ -34,7 +34,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center"><CardTitle>Maramattam Infra Mart</CardTitle><CardDescription>Sign in to Quotation Generator</CardDescription></CardHeader>
+        <CardHeader className="text-center"><CardTitle>Salini Traders</CardTitle><CardDescription>Sign in to Quotation Generator</CardDescription></CardHeader>
         <CardContent>
           <Suspense fallback={<div className="text-center py-4">Loading...</div>}>
             <LoginForm />

@@ -27,7 +27,7 @@ export function Sidebar() {
   return (
     <aside className={cn("flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-200", collapsed ? "w-16" : "w-60")}>
       <div className="flex items-center justify-between p-4 h-14">
-        {!collapsed && <Link href="/" className="font-semibold text-sm truncate">MIM</Link>}
+        {!collapsed && <Link href="/" className="font-semibold text-sm truncate">Salini</Link>}
         <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="shrink-0">
           {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
