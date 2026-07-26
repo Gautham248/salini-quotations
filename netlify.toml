@@ -1,0 +1,12 @@
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  PUPPETEER_SKIP_DOWNLOAD = "true"
+  NODE_VERSION = "24"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-cache"

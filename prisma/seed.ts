@@ -1,8 +1,9 @@
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: new PrismaLibSql({ url: process.env.DATABASE_URL || "file:./dev.db" }) });
 
 const units = ["Sqf", "Sqm", "Nos", "Kg", "Ton", "Ltr", "Mtr", "Pcs", "Roll", "Box"];
 
@@ -33,11 +34,16 @@ const items = [
 async function main() {
   const existing = await prisma.companySettings.findFirst();
   if (!existing) {
-    const pw = randomBytes(6).toString("hex").slice(0, 8);
-    const hash = await bcrypt.hash(pw, 12);
+    const adminHash = await bcrypt.hash("admin123", 12);
+    const staffHash = await bcrypt.hash("staff123", 12);
+
     const admin = await prisma.user.create({
-      data: { username: "admin", passwordHash: hash, role: "admin", forcePasswordChange: true },
+      data: { username: "admin", passwordHash: adminHash, role: "admin", forcePasswordChange: false },
     });
+    await prisma.user.create({
+      data: { username: "staff", passwordHash: staffHash, role: "staff", forcePasswordChange: false },
+    });
+
     await prisma.companySettings.create({ data: {} });
 
     const unitMap: Record<string, number> = {};
@@ -59,7 +65,14 @@ async function main() {
       });
     }
 
-    console.log(`\n=== SEED COMPLETE ===\nAdmin: admin\nPassword: ${pw}\n====================\n`);
+    console.log(`
+╔════════════════════════════════╗
+║         SEED COMPLETE          ║
+╠════════════════════════════════╣
+║  Admin:  admin / admin123      ║
+║  Staff:  staff / staff123      ║
+╚════════════════════════════════╝
+`);
   } else {
     console.log("Already seeded.");
   }
