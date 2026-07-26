@@ -1,0 +1,3 @@
+import { db } from "@/lib/db"; import { requireAdmin } from "@/lib/auth-guards";
+export async function GET() { await requireAdmin(); let s = await db.companySettings.findFirst(); if (!s) s = await db.companySettings.create({ data: {} }); return Response.json(s); }
+export async function PUT(req: Request) { await requireAdmin(); const b = await req.json(); const ex = await db.companySettings.findFirst(); if (ex) { const u = await db.companySettings.update({ where: { id: ex.id }, data: b }); return Response.json(u); } const c = await db.companySettings.create({ data: b }); return Response.json(c, { status: 201 }); }

@@ -1,0 +1,16 @@
+import { NextRequest, NextResponse } from "next/server"; import { db } from "@/lib/db"; import { requireAuth } from "@/lib/auth-guards";
+async function getQuotation(id: number, uid: number, isAdmin: boolean) { const q = await db.quotation.findUnique({ where: { id }, include: { createdBy: { select: { username: true } }, lineItems: { orderBy: { lineNo: "asc" } } } }); if (!q) return null; if (!isAdmin && q.createdById !== uid) return null; return q; }
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) { const s = await requireAuth(); const { id } = await params; const q = await getQuotation(parseInt(id), s.user.id, s.user.role === "admin"); return q ? NextResponse.json(q) : NextResponse.json({ error: "Not found" }, { status: 404 }); }
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const s = await requireAuth(); const { id } = await params; const b = await req.json(); const idn = parseInt(id);
+  const ex = await db.quotation.findUnique({ where: { id: idn } }); if (!ex || (ex.createdById !== s.user.id && s.user.role !== "admin")) return NextResponse.json({ error: "Not found" }, { status: 404 }); if (ex.status === "finalized") return NextResponse.json({ error: "Cannot edit finalized" }, { status: 400 });
+  await db.quotation.update({ where: { id: idn }, data: { quotNo: b.quotNo ?? ex.quotNo, refNo: b.refNo ?? ex.refNo, quotDate: b.quotDate ? new Date(b.quotDate) : ex.quotDate, customerName: b.customerName ?? ex.customerName, customerAddress: b.customerAddress, customerPlace: b.customerPlace, customerGstin: b.customerGstin, deliveryTerms: b.deliveryTerms, gstNote: b.gstNote, validity: b.validity ?? ex.validity, paymentTerms: b.paymentTerms ?? ex.paymentTerms } });
+  if (b.lineItems && Array.isArray(b.lineItems)) { await db.quotationLineItem.deleteMany({ where: { quotationId: idn } }); if (b.lineItems.length > 0) { await db.quotationLineItem.createMany({ data: b.lineItems.map((item: Record<string, unknown>, idx: number) => ({ quotationId: idn, masterItemId: (item.masterItemId as number) || null, lineNo: (item.lineNo as number) ?? (idx + 1), description: item.description as string, unit: item.unit as string, rate: item.rate as number, gstPercent: item.gstPercent as number, qty: item.qty as number, netValue: item.netValue as number, quoteMode: (item.quoteMode as string) || "quantity", weightKg: (item.weightKg as number) || null, pieceCount: (item.pieceCount as number) || null })) }); } }
+  const upd = await db.quotation.findUnique({ where: { id: idn }, include: { createdBy: { select: { username: true } }, lineItems: { orderBy: { lineNo: "asc" } } } });
+  return NextResponse.json(upd);
+}
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const s = await requireAuth(); const { id } = await params; const idn = parseInt(id);
+  const q = await db.quotation.findUnique({ where: { id: idn } }); if (!q || (q.createdById !== s.user.id && s.user.role !== "admin")) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await db.quotationLineItem.deleteMany({ where: { quotationId: idn } }); await db.quotation.delete({ where: { id: idn } }); return NextResponse.json({ success: true });
+}

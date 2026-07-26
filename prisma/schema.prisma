@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int          @id @default(autoincrement())
+  username            String       @unique
+  passwordHash        String
+  role                String
+  isActive            Boolean      @default(true)
+  forcePasswordChange Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  quotations          Quotation[]  @relation("CreatedBy")
+  createdItems        MasterItem[] @relation("ItemCreatedBy")
+  updatedItems        MasterItem[] @relation("ItemUpdatedBy")
+  createdUnits        Unit[]       @relation("UnitCreatedBy")
+}
+
+model CompanySettings {
+  id             Int      @id @default(autoincrement())
+  companyName    String   @default("SALINI TRADERS")
+  subheading     String   @default("Pala - Thodupuzha Road, Kanattupura, Pala, Kottayam, Kerala")
+  phone          String   @default("+91 9539066366")
+  mobile         String   @default("+91 9539088488")
+  email          String   @default("salinisteelspala@gmail.com")
+  gstin          String   @default("32AESFS0236G1Z3")
+  bankDetails    String   @default("State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661")
+  disclaimerText String   @default("Certified that the particulars given above are true and correct.")
+  loadingNote    String   @default("LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA")
+  updatedAt      DateTime @updatedAt
+}
+
+model Unit {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  isActive  Boolean          @default(true)
+  createdBy User             @relation("UnitCreatedBy", fields: [createdById], references: [id])
+  createdById Int
+  createdAt DateTime         @default(now())
+  items     MasterItem[]
+  conversionsFrom UnitConversion[] @relation("FromUnit")
+  conversionsTo   UnitConversion[] @relation("ToUnit")
+}
+
+model UnitConversion {
+  id            Int    @id @default(autoincrement())
+  fromUnit      Unit   @relation("FromUnit", fields: [fromUnitId], references: [id])
+  fromUnitId    Int
+  toUnit        Unit   @relation("ToUnit", fields: [toUnitId], references: [id])
+  toUnitId      Int
+  factor        Float
+  @@unique([fromUnitId, toUnitId])
+}
+
+model MasterItem {
+  id            Int                  @id @default(autoincrement())
+  description   String
+  unit          Unit                 @relation(fields: [unitId], references: [id])
+  unitId        Int
+  rate          Float
+  gstPercent    Float
+  category      String?
+  weightPerUnit Float?
+  piecesPerUnit Int?
+  isActive      Boolean              @default(true)
+  createdBy     User                 @relation("ItemCreatedBy", fields: [createdById], references: [id])
+  createdById   Int
+  updatedBy     User                 @relation("ItemUpdatedBy", fields: [updatedById], references: [id])
+  updatedById   Int
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  lineItems     QuotationLineItem[]
+}
+
+model Quotation {
+  id              Int                  @id @default(autoincrement())
+  quotNo          String               @unique
+  refNo           String
+  quotDate        DateTime
+  status          String
+  customerName    String
+  customerAddress String?
+  customerPlace   String?
+  customerGstin   String?
+  deliveryTerms   String?
+  gstNote         String?
+  validity        String               @default("LIMITED")
+  paymentTerms    String               @default("READY PAYMENT")
+  subTotal        Float?
+  cgst            Float?
+  sgst            Float?
+  roundOff        Float?
+  netAmount       Float?
+  amountInWords   String?
+  createdBy       User                 @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById     Int
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  finalizedAt     DateTime?
+  lineItems       QuotationLineItem[]
+}
+
+model QuotationLineItem {
+  id           Int         @id @default(autoincrement())
+  quotation    Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId  Int
+  masterItem   MasterItem? @relation(fields: [masterItemId], references: [id])
+  masterItemId Int?
+  lineNo       Int
+  description  String
+  unit         String
+  rate         Float
+  gstPercent   Float
+  qty          Float
+  netValue     Float
+  quoteMode    String      @default("quantity")
+  weightKg     Float?
+  pieceCount   Float?
+}
+
+model QuotSequence {
+  id    Int @id @default(autoincrement())
+  dummy Int @unique
+}
