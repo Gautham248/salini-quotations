@@ -14,10 +14,22 @@ export const authConfig: NextAuthConfig = {
     credentials: { username: {}, password: {} },
     async authorize(credentials) {
       if (!credentials?.username || !credentials?.password) return null;
-      const u = await db.user.findUnique({ where: { username: (credentials.username as string) } });
-      if (!u || !u.isActive) return null;
-      if (!await bcrypt.compare(credentials.password as string, u.passwordHash)) return null;
-      return { id: String(u.id), name: u.username, role: u.role as string };
+      try {
+        const u = await db.user.findUnique({ where: { username: (credentials.username as string) } });
+        if (!u || !u.isActive) {
+          console.warn(`Auth failed: User '${credentials.username}' not found or inactive.`);
+          return null;
+        }
+        const isValidPassword = await bcrypt.compare(credentials.password as string, u.passwordHash);
+        if (!isValidPassword) {
+          console.warn(`Auth failed: Invalid password for user '${credentials.username}'.`);
+          return null;
+        }
+        return { id: String(u.id), name: u.username, role: u.role as string };
+      } catch (error) {
+        console.error("Database or authentication error during authorize:", error);
+        return null;
+      }
     }
   })],
   callbacks: {
@@ -30,6 +42,7 @@ export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
   session: { strategy: "jwt" as const },
   trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);

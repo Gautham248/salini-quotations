@@ -7,6 +7,9 @@
 [build.environment]
   NODE_VERSION = "24"
 
+[functions]
+  included_files = ["dev.db"]
+
 [[headers]]
   for = "/api/*"
   [headers.values]
