@@ -4,10 +4,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, ShoppingCart, X, Check, PackageOpen, Tags } from "lucide-react";
+import {
+  Plus, Search, ShoppingCart, X, Check, PackageOpen,
+  Tags, Trash2, ChevronRight, LayoutList,
+} from "lucide-react";
 import { toast } from "sonner";
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
 interface Category { id: number; name: string; _count: { items: number } }
+
 interface MI {
   id: number;
   description: string;
@@ -18,16 +24,20 @@ interface MI {
   piecesPerUnit: number | null;
   categories: { category: Category }[];
 }
-interface SelectedItem {
+
+export interface CartItem {
   masterItemId: number;
   description: string;
   unit: string;
   unitId: number;
   rate: number;
   gstPercent: number;
+  qty: number;
   weightPerUnit: number | null;
   piecesPerUnit: number | null;
 }
+
+export type SelectedItem = CartItem;
 
 interface ItemPickerProps {
   onConfirm: (items: SelectedItem[]) => void;
@@ -35,19 +45,26 @@ interface ItemPickerProps {
   onClearDraft: () => void;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function highlight(text: string, query: string) {
   if (!query.trim()) return <span>{text}</span>;
   const tokens = query.trim().split(/\s+/).filter(Boolean);
-  const pattern = new RegExp(`(${tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const pattern = new RegExp(`(${escaped})`, "gi");
   const parts = text.split(pattern);
   return (
     <span>
       {parts.map((part, i) =>
-        pattern.test(part) ? <mark key={i} className="bg-yellow-200 text-yellow-900 rounded px-0.5">{part}</mark> : part
+        pattern.test(part)
+          ? <mark key={i} className="bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-sm px-0.5 not-italic">{part}</mark>
+          : part
       )}
     </span>
   );
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerProps) {
   const [open, setOpen] = useState(false);
@@ -55,44 +72,41 @@ export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerP
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<number | null>(null);
-  const [selected, setSelected] = useState<Map<number, SelectedItem>>(new Map());
+  const [cart, setCart] = useState<Map<number, CartItem>>(new Map());
   const [loading, setLoading] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Load catalog when modal opens
   useEffect(() => {
     if (!open) return;
     setLoading(true);
     fetch("/api/items")
       .then(r => r.json())
-      .then(d => {
-        setItems(d.items ?? []);
-        setCategories(d.categories ?? []);
-      })
-      .finally(() => {
-        setLoading(false);
-        setTimeout(() => searchRef.current?.focus(), 100);
-      });
+      .then(d => { setItems(d.items ?? []); setCategories(d.categories ?? []); })
+      .finally(() => { setLoading(false); setTimeout(() => searchRef.current?.focus(), 80); });
   }, [open]);
 
+  // Fuzzy filter: every search token must appear in description or category name
   const filtered = useMemo(() => {
     let list = items;
-    if (activeCat !== null) {
+    if (activeCat !== null)
       list = list.filter(i => i.categories.some(c => c.category.id === activeCat));
-    }
     if (search.trim()) {
       const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
       list = list.filter(i => {
-        const desc = i.description.toLowerCase();
-        const catNames = i.categories.map(c => c.category.name.toLowerCase()).join(" ");
-        return tokens.every(t => desc.includes(t) || catNames.includes(t));
+        const haystack = i.description.toLowerCase() + " " +
+          i.categories.map(c => c.category.name.toLowerCase()).join(" ");
+        return tokens.every(t => haystack.includes(t));
       });
     }
     return list;
   }, [items, search, activeCat]);
 
+  // ── Cart helpers ────────────────────────────────────────────────────────────
+
   function toggleItem(item: MI) {
-    setSelected(prev => {
+    setCart(prev => {
       const next = new Map(prev);
       if (next.has(item.id)) {
         next.delete(item.id);
@@ -104,6 +118,7 @@ export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerP
           unitId: item.unit?.id ?? 0,
           rate: item.rate,
           gstPercent: item.gstPercent,
+          qty: 1,
           weightPerUnit: item.weightPerUnit,
           piecesPerUnit: item.piecesPerUnit,
         });
@@ -112,34 +127,61 @@ export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerP
     });
   }
 
-  function handleConfirm() {
-    if (selected.size === 0) { toast.error("Select at least one item"); return; }
-    onConfirm(Array.from(selected.values()));
-    setSelected(new Map());
-    setOpen(false);
+  function updateCart(id: number, field: keyof CartItem, raw: string) {
+    setCart(prev => {
+      const next = new Map(prev);
+      const it = next.get(id);
+      if (!it) return prev;
+      const numericFields: (keyof CartItem)[] = ["rate", "gstPercent", "qty"];
+      const value = numericFields.includes(field) ? (parseFloat(raw) || 0) : raw;
+      next.set(id, { ...it, [field]: value });
+      return next;
+    });
   }
 
+  function removeFromCart(id: number) {
+    setCart(prev => { const n = new Map(prev); n.delete(id); return n; });
+  }
+
+  // ── Close & confirm ─────────────────────────────────────────────────────────
+
   function handleAttemptClose() {
-    if (selected.size > 0) {
-      setConfirmClose(true);
-    } else {
-      setOpen(false);
-    }
+    cart.size > 0 ? setConfirmClose(true) : doClose();
+  }
+
+  function doClose() {
+    setOpen(false);
+    setSearch("");
+    setActiveCat(null);
+  }
+
+  function handleConfirm() {
+    if (cart.size === 0) { toast.error("Add at least one item to the quote"); return; }
+    onConfirm(Array.from(cart.values()));
+    setCart(new Map());
+    doClose();
+    toast.success(`${cart.size} item${cart.size !== 1 ? "s" : ""} added to quote`);
   }
 
   function handleSaveDraft() {
     onSaveDraft();
+    setCart(new Map());
     setConfirmClose(false);
-    setSelected(new Map());
-    setOpen(false);
+    doClose();
   }
 
-  function handleClearAndClose() {
+  function handleDiscard() {
     onClearDraft();
+    setCart(new Map());
     setConfirmClose(false);
-    setSelected(new Map());
-    setOpen(false);
+    doClose();
   }
+
+  // Derived totals for cart footer
+  const cartList = Array.from(cart.values());
+  const subtotal = cartList.reduce((s, i) => s + i.qty * i.rate, 0);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -147,181 +189,358 @@ export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerP
         <Plus className="h-4 w-4 mr-2" />Add from Catalog
       </Button>
 
-      {/* ── Main Catalog Modal ─────────────────────────────────────── */}
+      {/* ═══════════════════ MAIN CATALOG MODAL ═══════════════════ */}
       <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); else setOpen(true); }}>
         <DialogContent
-          className="max-w-6xl w-[96vw] h-[90vh] p-0 gap-0 flex flex-col"
+          className="max-w-[1200px] w-[98vw] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden rounded-2xl"
           showCloseButton={false}
         >
-          {/* Header */}
-          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                <PackageOpen className="h-5 w-5 text-primary" />
-                Select Items from Catalog
-              </DialogTitle>
-              <div className="flex items-center gap-3">
-                {selected.size > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <ShoppingCart className="h-4 w-4" />
-                    <span className="font-medium text-foreground">{selected.size}</span> selected
-                  </div>
-                )}
-                <Button onClick={handleConfirm} disabled={selected.size === 0} className="gap-2">
-                  <Check className="h-4 w-4" />
-                  Add to Quote ({selected.size})
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleAttemptClose} className="h-8 w-8">
-                  <X className="h-4 w-4" />
-                </Button>
+          {/* ── Top bar ── */}
+          <div className="flex items-center gap-4 px-5 py-3.5 border-b bg-card flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <PackageOpen className="h-4.5 w-4.5 text-primary" />
               </div>
+              <DialogTitle className="text-base font-semibold whitespace-nowrap">
+                Item Catalog
+              </DialogTitle>
             </div>
-            {/* Search */}
-            <div className="relative mt-3">
+
+            {/* Search bar */}
+            <div className="relative flex-1 max-w-lg">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 ref={searchRef}
-                placeholder="Search items… (e.g. 'TILE SHEET' or 'RIDGE')"
+                placeholder="Search… e.g. 'TILE SHEET' or 'RIDGE'"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-9 h-10 text-sm"
+                className="pl-9 h-9 text-sm bg-muted/40 border-0 focus-visible:ring-1"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-          </DialogHeader>
 
-          {/* Body */}
-          <div className="flex flex-1 min-h-0">
-            {/* Category Sidebar */}
-            <aside className="w-52 flex-shrink-0 border-r overflow-y-auto py-2">
-              <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Tags className="h-3.5 w-3.5" />Categories
-              </p>
-              <button
-                onClick={() => setActiveCat(null)}
-                className={`w-full text-left px-4 py-2 text-sm rounded-none transition-colors ${activeCat === null ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-foreground"}`}
+            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+              {cart.size > 0 && (
+                <span className="text-sm text-muted-foreground hidden sm:block">
+                  <span className="font-semibold text-foreground">{cart.size}</span> in cart
+                </span>
+              )}
+              <Button
+                onClick={handleConfirm}
+                disabled={cart.size === 0}
+                size="sm"
+                className="gap-1.5 px-4"
               >
-                All Items
-                <span className="ml-1 text-xs text-muted-foreground">({items.length})</span>
+                <Check className="h-4 w-4" />
+                Add {cart.size > 0 ? `(${cart.size})` : ""} to Quote
+              </Button>
+              <button
+                onClick={handleAttemptClose}
+                className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4" />
               </button>
+            </div>
+          </div>
+
+          {/* ── Three-pane body ── */}
+          <div className="flex flex-1 min-h-0 divide-x">
+
+            {/* ─── PANE 1: Category sidebar ──────────────────────────── */}
+            <aside className="w-48 flex-shrink-0 overflow-y-auto bg-muted/20 py-3">
+              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <Tags className="h-3 w-3" />Categories
+              </p>
+
+              <CategoryBtn
+                label="All Items"
+                count={items.length}
+                active={activeCat === null}
+                onClick={() => setActiveCat(null)}
+              />
               {categories.map(cat => (
-                <button
+                <CategoryBtn
                   key={cat.id}
-                  onClick={() => setActiveCat(cat.id)}
-                  className={`w-full text-left px-4 py-2 text-sm rounded-none transition-colors ${activeCat === cat.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-foreground"}`}
-                >
-                  {cat.name}
-                  <span className="ml-1 text-xs text-muted-foreground">({cat._count.items})</span>
-                </button>
+                  label={cat.name}
+                  count={cat._count.items}
+                  active={activeCat === cat.id}
+                  onClick={() => setActiveCat(cat.id === activeCat ? null : cat.id)}
+                />
               ))}
             </aside>
 
-            {/* Items Grid */}
-            <main className="flex-1 overflow-y-auto p-4">
+            {/* ─── PANE 2: Catalog list ──────────────────────────────── */}
+            <main className="flex-1 overflow-y-auto bg-background">
               {loading ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Loading catalog…
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                  <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <p className="text-sm">Loading catalog…</p>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-                  <PackageOpen className="h-10 w-10 opacity-40" />
-                  <p className="text-sm">No items match your search.</p>
-                  {search && <p className="text-xs">Try fewer words or check spelling.</p>}
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground py-16">
+                  <PackageOpen className="h-10 w-10 opacity-30" />
+                  <p className="text-sm font-medium">No items found</p>
+                  {search && <p className="text-xs">Try fewer words or check spelling</p>}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtered.map(item => {
-                    const isSelected = selected.has(item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => toggleItem(item)}
-                        className={`
-                          relative text-left rounded-xl border-2 p-4 transition-all duration-150 cursor-pointer
-                          ${isSelected
-                            ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                            : "border-border hover:border-primary/40 hover:bg-muted/50 bg-card"
-                          }
-                        `}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-3 right-3 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="h-3 w-3 text-white" />
-                          </div>
-                        )}
-                        <p className="font-medium text-sm leading-snug pr-6">
-                          {highlight(item.description, search)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          <span className="font-medium text-foreground">₹{item.rate.toFixed(2)}</span>
-                          <span className="mx-1">/</span>
-                          <span>{item.unit?.name}</span>
-                          <span className="mx-1.5">·</span>
-                          <span>GST {item.gstPercent}%</span>
-                          {item.weightPerUnit != null && (
-                            <span className="mx-1.5">· {item.weightPerUnit} Kg/unit</span>
-                          )}
-                        </p>
-                        {item.categories.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {item.categories.map(c => (
-                              <Badge key={c.category.id} variant="secondary" className="text-[10px] h-4 px-1.5">
-                                {c.category.name}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm border-b">
+                    <tr className="text-xs text-muted-foreground font-medium">
+                      <th className="text-left px-4 py-2.5 font-medium">Description</th>
+                      <th className="text-left px-3 py-2.5 font-medium w-16">Unit</th>
+                      <th className="text-right px-3 py-2.5 font-medium w-24">Rate (₹)</th>
+                      <th className="text-right px-3 py-2.5 font-medium w-14">GST</th>
+                      <th className="text-left px-3 py-2.5 font-medium w-24 hidden lg:table-cell">Wt/Unit</th>
+                      <th className="w-12 px-2 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filtered.map(item => {
+                      const inCart = cart.has(item.id);
+                      return (
+                        <tr
+                          key={item.id}
+                          onClick={() => toggleItem(item)}
+                          className={`
+                            group cursor-pointer transition-colors select-none
+                            ${inCart
+                              ? "bg-primary/5 hover:bg-primary/8"
+                              : "hover:bg-muted/50"
+                            }
+                          `}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <span className={`font-medium leading-tight ${inCart ? "text-primary" : ""}`}>
+                                {highlight(item.description, search)}
+                              </span>
+                              {item.categories.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {item.categories.map(c => (
+                                    <span
+                                      key={c.category.id}
+                                      className="text-[10px] bg-muted text-muted-foreground rounded px-1.5 py-0.5"
+                                    >
+                                      {c.category.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{item.unit?.name}</td>
+                          <td className="px-3 py-3 text-right font-medium tabular-nums">{item.rate.toFixed(2)}</td>
+                          <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{item.gstPercent}%</td>
+                          <td className="px-3 py-3 text-muted-foreground hidden lg:table-cell whitespace-nowrap">
+                            {item.weightPerUnit != null ? `${item.weightPerUnit} Kg` : "—"}
+                          </td>
+                          <td className="px-2 py-3">
+                            <div className={`
+                              h-7 w-7 rounded-full flex items-center justify-center transition-all mx-auto
+                              ${inCart
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
+                              }
+                            `}>
+                              {inCart ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </main>
-          </div>
 
-          {/* Selected Summary Bar */}
-          {selected.size > 0 && (
-            <div className="flex-shrink-0 border-t bg-muted/30 px-6 py-3 flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground mr-1">Selected:</span>
-              {Array.from(selected.values()).map(i => (
-                <Badge key={i.masterItemId} variant="outline" className="gap-1 text-xs">
-                  {i.description}
-                  <button onClick={() => setSelected(p => { const n = new Map(p); n.delete(i.masterItemId); return n; })} className="ml-0.5 hover:text-destructive">
-                    <X className="h-3 w-3" />
+            {/* ─── PANE 3: Quote Cart ────────────────────────────────── */}
+            <aside className="w-80 flex-shrink-0 flex flex-col bg-muted/10 overflow-hidden">
+              {/* Cart header */}
+              <div className="px-4 py-3 border-b bg-card flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Quote Items</span>
+                  {cart.size > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                      {cart.size}
+                    </span>
+                  )}
+                </div>
+                {cart.size > 0 && (
+                  <button
+                    onClick={() => setCart(new Map())}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Clear all
                   </button>
-                </Badge>
-              ))}
-            </div>
-          )}
+                )}
+              </div>
+
+              {/* Cart items */}
+              <div className="flex-1 overflow-y-auto">
+                {cart.size === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground px-6 py-16">
+                    <LayoutList className="h-8 w-8 opacity-30" />
+                    <p className="text-sm text-center font-medium">No items yet</p>
+                    <p className="text-xs text-center">Click a row in the catalog to add it here</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {cartList.map((item, idx) => {
+                      const net = item.qty * item.rate;
+                      return (
+                        <div key={item.masterItemId} className="px-4 py-3 space-y-2.5">
+                          {/* Item name row */}
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground mt-0.5 tabular-nums w-5 flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <p className="text-xs font-semibold leading-tight flex-1 min-w-0 pr-1">
+                              {item.description}
+                            </p>
+                            <button
+                              onClick={() => removeFromCart(item.masterItemId)}
+                              className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 mt-0.5"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Editable fields */}
+                          <div className="grid grid-cols-2 gap-1.5 pl-5">
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Qty</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.qty || ""}
+                                onChange={e => updateCart(item.masterItemId, "qty", e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                className="h-7 text-xs px-2 text-right tabular-nums"
+                                placeholder="0"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Unit</span>
+                              <Input
+                                value={item.unit}
+                                onChange={e => updateCart(item.masterItemId, "unit", e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                className="h-7 text-xs px-2"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Rate (₹)</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.rate || ""}
+                                onChange={e => updateCart(item.masterItemId, "rate", e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                className="h-7 text-xs px-2 text-right tabular-nums"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">GST %</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={item.gstPercent || ""}
+                                onChange={e => updateCart(item.masterItemId, "gstPercent", e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                className="h-7 text-xs px-2 text-right tabular-nums"
+                              />
+                            </label>
+                          </div>
+
+                          {/* Net value */}
+                          <div className="pl-5 flex items-center justify-between">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Net</span>
+                            <span className="text-xs font-bold tabular-nums text-foreground">
+                              ₹{net.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cart footer */}
+              {cart.size > 0 && (
+                <div className="flex-shrink-0 border-t bg-card px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Subtotal (excl. GST)</span>
+                    <span className="text-sm font-bold tabular-nums">₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <Button onClick={handleConfirm} className="w-full gap-2" size="sm">
+                    <ChevronRight className="h-4 w-4" />
+                    Add {cart.size} Item{cart.size !== 1 ? "s" : ""} to Quote
+                  </Button>
+                </div>
+              )}
+            </aside>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── Close Confirmation Dialog ─────────────────────────────── */}
+      {/* ═══════════════════ CLOSE CONFIRMATION ═══════════════════ */}
       <Dialog open={confirmClose} onOpenChange={setConfirmClose}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Save before closing?</DialogTitle>
+            <DialogTitle>Close without adding?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            You have {selected.size} item{selected.size !== 1 ? "s" : ""} selected. What would you like to do?
+            You have <strong>{cart.size} item{cart.size !== 1 ? "s" : ""}</strong> in your cart. What would you like to do?
           </p>
-          <div className="flex flex-col gap-2 mt-2">
+          <div className="flex flex-col gap-2 mt-1">
             <Button onClick={handleSaveDraft} className="w-full">
-              Save as Draft &amp; Close
+              Save Quotation as Draft &amp; Close
             </Button>
-            <Button variant="outline" onClick={handleClearAndClose} className="w-full">
-              Discard Selection &amp; Close
+            <Button variant="outline" onClick={handleDiscard} className="w-full">
+              Discard &amp; Close
             </Button>
             <Button variant="ghost" onClick={() => setConfirmClose(false)} className="w-full">
-              Continue Selecting
+              Continue Editing
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ── Sub-component: Category button ────────────────────────────────────────────
+function CategoryBtn({
+  label, count, active, onClick,
+}: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between gap-2
+        ${active
+          ? "bg-primary/10 text-primary font-semibold border-r-2 border-primary"
+          : "text-foreground hover:bg-muted/60"
+        }
+      `}
+    >
+      <span className="truncate">{label}</span>
+      <span className={`text-[10px] tabular-nums flex-shrink-0 ${active ? "text-primary/70" : "text-muted-foreground"}`}>
+        {count}
+      </span>
+    </button>
   );
 }
