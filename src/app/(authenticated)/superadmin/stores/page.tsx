@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Store } from "lucide-react";
+import { Plus, Store, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface StoreInfo {
@@ -37,6 +37,12 @@ export default function StoresPage() {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
 
   const fetchStores = useCallback(async () => {
     setLoading(true);
@@ -75,6 +81,32 @@ export default function StoresPage() {
     await fetch(`/api/stores/${store.id}`, { method: "PATCH" });
     toast.success(store.isActive ? "Store deactivated" : "Store activated");
     fetchStores();
+  }
+
+  function openEdit(store: StoreInfo) {
+    setEditId(store.id);
+    setEditName(store.name);
+    setEditSlug(store.slug);
+    setEditOpen(true);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId || !editName.trim() || !editSlug.trim()) return;
+    setSaving(true);
+    const r = await fetch(`/api/stores/${editId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName.trim(), slug: editSlug.trim() }),
+    });
+    if (r.ok) {
+      toast.success("Store updated");
+      setEditOpen(false);
+      fetchStores();
+    } else {
+      toast.error("Failed to update store");
+    }
+    setSaving(false);
   }
 
   return (
@@ -117,9 +149,14 @@ export default function StoresPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => toggle(s)}>
-                    {s.isActive ? "Deactivate" : "Activate"}
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => toggle(s)}>
+                      {s.isActive ? "Deactivate" : "Activate"}
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -150,6 +187,26 @@ export default function StoresPage() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={saving}>{saving ? "Creating..." : "Create Store"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Store Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Edit Store</DialogTitle></DialogHeader>
+          <form onSubmit={saveEdit} className="space-y-3">
+            <div className="space-y-1">
+              <Label>Store Name *</Label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} required />
+            </div>
+            <div className="space-y-1">
+              <Label>Slug *</Label>
+              <Input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="url-friendly" required />
+            </div>
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

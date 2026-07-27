@@ -5,7 +5,9 @@ import { resolveStoreId } from "@/lib/auth-guards";
 export async function GET(req: Request) {
   await requireAdmin();
   const storeId = await resolveStoreId(req);
-  if (!storeId) return Response.json(null);
+  if (!storeId) {
+    return Response.json({ error: "Store context required — use ?storeId= to select a store" }, { status: 400 });
+  }
 
   const s = await db.companySettings.findUnique({ where: { storeId } });
   return Response.json(s);

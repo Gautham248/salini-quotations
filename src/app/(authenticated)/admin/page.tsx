@@ -30,11 +30,17 @@ export default function AdminDashboard() {
     loadingNote: "",
   });
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
-      .then(setS);
+      .then((data) => {
+        if (data && typeof data === "object" && !data.error) setS(data);
+        setFetchLoading(false);
+      })
+      .catch(() => setFetchLoading(false));
   }, []);
 
   async function save(e: React.FormEvent) {
@@ -122,7 +128,10 @@ export default function AdminDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={save} className="space-y-5">
+          {fetchLoading ? (
+            <p className="text-sm text-muted-foreground py-4">Loading settings...</p>
+          ) : (
+            <form onSubmit={save} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Company Name</Label>
@@ -206,6 +215,7 @@ export default function AdminDashboard() {
               {loading ? "Saving..." : "Save Settings"}
             </Button>
           </form>
+          )}
         </CardContent>
       </Card>
     </div>
