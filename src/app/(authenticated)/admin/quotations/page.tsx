@@ -13,7 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Copy, Pencil, Trash2, Plus, Lock } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Eye, Copy, Pencil, Trash2, Plus, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface QS {
@@ -49,128 +50,184 @@ export default function AdminQuotationsPage() {
   }, [fetchQuotations]);
 
   async function duplicate(id: number) {
-    const r = await fetch(`/api/quotations/${id}/duplicate`, { method: "POST" });
+    const r = await fetch(`/api/quotations/${id}/duplicate`, {
+      method: "POST",
+    });
     if (r.ok) {
       const d = await r.json();
-      toast.success("Quotation duplicated successfully");
+      toast.success("Quotation duplicated");
       router.push(`/quotations/${d.id}/edit`);
     } else {
-      toast.error("Failed to duplicate quotation");
+      toast.error("Failed to duplicate");
     }
   }
 
   async function del(id: number) {
-    if (!confirm("Are you sure you want to delete this quotation?")) return;
+    if (!confirm("Delete this quotation permanently?")) return;
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
     if (r.ok) {
       toast.success("Quotation deleted");
       fetchQuotations();
     } else {
-      toast.error("Failed to delete quotation");
+      toast.error("Failed to delete");
     }
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">All Quotations</h1>
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-tight">
+            All Quotations
+          </h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
+            {quotations.length} quotation
+            {quotations.length !== 1 ? "s" : ""} total
+          </p>
+        </div>
         <Link href="/quotations/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-1.5" />
             New Quotation
           </Button>
         </Link>
       </div>
 
       <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
-          placeholder="Search by customer name or quote no..."
+          placeholder="Search by customer or quote number..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
         />
       </div>
 
-      <div className="border rounded-xl bg-card shadow-xs overflow-hidden">
+      <Card className="overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Quot No</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Created By</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right pr-4">Actions</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Quote #
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Date
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Customer
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Amount
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Created By
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Status
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider text-right">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   Loading quotations...
                 </TableCell>
               </TableRow>
             ) : quotations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No quotations found.
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-12"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    No quotations found.
+                  </p>
+                  <Link
+                    href="/quotations/new"
+                    className="text-[13px] text-primary hover:underline mt-1 inline-block"
+                  >
+                    Create your first quotation
+                  </Link>
                 </TableCell>
               </TableRow>
             ) : (
-              quotations.map(q => (
-                <TableRow key={q.id}>
-                  <TableCell className="font-semibold">{q.quotNo}</TableCell>
-                  <TableCell>{new Date(q.quotDate).toLocaleDateString()}</TableCell>
-                  <TableCell className="font-medium">{q.customerName}</TableCell>
-                  <TableCell>
-                    {q.netAmount != null ? `₹${q.netAmount.toFixed(0)}` : "-"}
+              quotations.map((q) => (
+                <TableRow key={q.id} className="group">
+                  <TableCell className="font-semibold text-sm">
+                    {q.quotNo}
                   </TableCell>
-                  <TableCell>{q.createdBy?.username || "-"}</TableCell>
+                  <TableCell className="text-sm">
+                    {new Date(q.quotDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">
+                    {q.customerName}
+                  </TableCell>
+                  <TableCell className="text-sm tabular-nums">
+                    {q.netAmount != null
+                      ? `\u20B9${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+                      : "\u2014"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {q.createdBy?.username || "\u2014"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <Badge
-                        variant={q.status === "finalized" ? "default" : "secondary"}
-                        className="capitalize"
+                        variant={
+                          q.status === "finalized" ? "default" : "secondary"
+                        }
+                        className="capitalize text-[11px]"
                       >
                         {q.status}
                       </Badge>
                       {q.isLocked && (
                         <Badge
                           variant="outline"
-                          className="bg-amber-500/10 text-amber-700 border-amber-500/30 flex items-center gap-1"
+                          className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1"
                         >
                           <Lock className="h-3 w-3" /> Locked
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right pr-4">
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
                       <Link href={`/quotations/${q.id}`}>
-                        <Button variant="ghost" size="icon" title="View Quotation">
-                          <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
                       </Link>
                       <Link href={`/quotations/${q.id}/edit`}>
-                        <Button variant="ghost" size="icon" title="Edit Quotation">
-                          <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </Link>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => duplicate(q.id)}
-                        title="Duplicate Quotation"
                       >
-                        <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        <Copy className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 hover:text-destructive"
                         onClick={() => del(q.id)}
-                        title="Delete Quotation"
                       >
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
@@ -179,7 +236,7 @@ export default function AdminQuotationsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
     </div>
   );
 }

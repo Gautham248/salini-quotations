@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { UserForm } from "./user-form";
 import { Plus, KeyRound, Loader2 } from "lucide-react";
 import {
@@ -46,7 +47,6 @@ export function UsersTable() {
   const [loading, setLoading] = useState(true);
   const [fo, setFo] = useState(false);
 
-  // Change Password Modal state
   const [resetUser, setResetUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -67,14 +67,18 @@ export function UsersTable() {
     fetchUsers();
   }, [fetchUsers]);
 
-  async function save(d: { username: string; password: string; role: string }) {
+  async function save(d: {
+    username: string;
+    password: string;
+    role: string;
+  }) {
     const r = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(d),
     });
     if (r.ok) {
-      toast.success("User created successfully");
+      toast.success("User created");
       fetchUsers();
     } else {
       const err = await r.json().catch(() => ({}));
@@ -83,7 +87,9 @@ export function UsersTable() {
   }
 
   async function toggle(u: User) {
-    const isSelf = (currentUserId && u.id === currentUserId) || u.username === currentUsername;
+    const isSelf =
+      (currentUserId && u.id === currentUserId) ||
+      u.username === currentUsername;
     if (isSelf) {
       toast.error("You cannot deactivate your own account");
       return;
@@ -100,12 +106,14 @@ export function UsersTable() {
       fetchUsers();
     } else {
       const err = await r.json().catch(() => ({}));
-      toast.error(err.error || "Failed to update user status");
+      toast.error(err.error || "Failed to update user");
     }
   }
 
   async function roleChange(u: User, nr: string) {
-    const isSelf = (currentUserId && u.id === currentUserId) || u.username === currentUsername;
+    const isSelf =
+      (currentUserId && u.id === currentUserId) ||
+      u.username === currentUsername;
     if (isSelf) {
       toast.error("You cannot change your own role");
       return;
@@ -129,7 +137,7 @@ export function UsersTable() {
   async function handleResetPasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!resetUser || !newPassword.trim()) {
-      toast.error("Please enter a new password");
+      toast.error("Enter a new password");
       return;
     }
 
@@ -138,7 +146,10 @@ export function UsersTable() {
       const r = await fetch(`/api/users/${resetUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset-password", password: newPassword.trim() }),
+        body: JSON.stringify({
+          action: "reset-password",
+          password: newPassword.trim(),
+        }),
       });
 
       if (r.ok) {
@@ -157,50 +168,76 @@ export function UsersTable() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-        <Button onClick={() => setFo(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-tight">Users</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
+            {users.length} user{users.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setFo(true)}>
+          <Plus className="h-4 w-4 mr-1.5" />
           Add User
         </Button>
       </div>
 
-      <div className="border rounded-xl bg-card shadow-xs overflow-hidden">
+      <Card className="overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-44 text-right pr-4">Actions</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Username
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Role
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Status
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider text-right">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   Loading users...
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
-              users.map(u => {
+              users.map((u) => {
                 const isSelf =
-                  (currentUserId && u.id === currentUserId) || u.username === currentUsername;
+                  (currentUserId && u.id === currentUserId) ||
+                  u.username === currentUsername;
 
                 return (
-                  <TableRow key={u.id} className={!u.isActive ? "opacity-50" : ""}>
-                    <TableCell className="font-medium">
+                  <TableRow
+                    key={u.id}
+                    className={!u.isActive ? "opacity-50" : ""}
+                  >
+                    <TableCell className="font-medium text-sm">
                       <div className="flex items-center gap-2">
                         <span>{u.username}</span>
                         {isSelf && (
-                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] py-0 px-1.5"
+                          >
                             You
                           </Badge>
                         )}
@@ -209,10 +246,10 @@ export function UsersTable() {
                     <TableCell>
                       <Select
                         value={u.role}
-                        onValueChange={v => roleChange(u, v ?? "staff")}
+                        onValueChange={(v) => roleChange(u, v ?? "staff")}
                         disabled={Boolean(isSelf)}
                       >
-                        <SelectTrigger className="w-28">
+                        <SelectTrigger className="w-28 h-8 text-[13px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -222,30 +259,35 @@ export function UsersTable() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={u.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant={u.isActive ? "default" : "secondary"}
+                        className="text-[11px]"
+                      >
                         {u.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right pr-4">
+                    <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => {
                             setResetUser(u);
                             setNewPassword("");
                           }}
                           title="Change Password"
                         >
-                          <KeyRound className="h-4 w-4" />
+                          <KeyRound className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={Boolean(isSelf)}
                           onClick={() => toggle(u)}
-                          title={isSelf ? "You cannot deactivate your own account" : undefined}
-                          className={isSelf ? "opacity-50 cursor-not-allowed" : ""}
+                          className={
+                            isSelf ? "opacity-50 cursor-not-allowed" : ""
+                          }
                         >
                           {u.isActive ? "Deactivate" : "Activate"}
                         </Button>
@@ -257,38 +299,43 @@ export function UsersTable() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       <UserForm open={fo} onOpenChange={setFo} onSave={save} />
 
-      {/* Change Password Dialog */}
       <Dialog
         open={Boolean(resetUser)}
-        onOpenChange={open => {
+        onOpenChange={(open) => {
           if (!open) setResetUser(null);
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="h-4 w-4 text-primary" />
               Change Password
             </DialogTitle>
-            <DialogDescription>
-              Enter a new password for user{" "}
-              <span className="font-semibold text-foreground">{resetUser?.username}</span>.
+            <DialogDescription className="text-[13px]">
+              Enter a new password for{" "}
+              <span className="font-semibold text-foreground">
+                {resetUser?.username}
+              </span>
+              .
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleResetPasswordSubmit} className="space-y-4 py-2">
-            <div className="space-y-2">
+          <form
+            onSubmit={handleResetPasswordSubmit}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-1.5">
               <Label htmlFor="new-password">New Password</Label>
               <Input
                 id="new-password"
                 type="password"
                 placeholder="Enter new password"
                 value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
+                onChange={(e) => setNewPassword(e.target.value)}
                 required
                 autoFocus
               />
@@ -298,13 +345,16 @@ export function UsersTable() {
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={() => setResetUser(null)}
                 disabled={resetting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={resetting}>
-                {resetting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button type="submit" size="sm" disabled={resetting}>
+                {resetting && (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                )}
                 Update Password
               </Button>
             </DialogFooter>

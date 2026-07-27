@@ -1,6 +1,5 @@
 "use client";
 import { use, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuotation } from "@/hooks/use-quotation";
 import { QuotationHeaderForm } from "@/components/quotations/quotation-header-form";
@@ -32,9 +31,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-export default function EditQuotationPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditQuotationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
-  const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
 
@@ -43,7 +45,6 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
 
   const quote = useQuotation(parseInt(id));
 
-  // Determine if editing controls should be disabled for staff when document is locked
   const isDocumentLocked = Boolean(quote.isLocked);
   const isReadOnlyForStaff = !isAdmin && isDocumentLocked;
 
@@ -54,8 +55,8 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
     await quote.manualSave();
     toast.success(
       targetState
-        ? "Document locked! Staff can no longer edit this quotation."
-        : "Document unlocked! Staff can now edit this quotation."
+        ? "Document locked. Staff can no longer edit."
+        : "Document unlocked. Staff can now edit."
     );
   };
 
@@ -65,21 +66,21 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
       return;
     }
     if (quote.lineItems.length === 0) {
-      toast.error("At least one line item is required to finalize");
+      toast.error("At least one line item is required");
       return;
     }
 
     setFinalizing(true);
-    // Explicitly update local status state to finalized and save
     quote.updateStatus("finalized");
 
     try {
       await quote.manualSave();
-
-      const r = await fetch(`/api/quotations/${quote.id}/finalize`, { method: "POST" });
+      const r = await fetch(`/api/quotations/${quote.id}/finalize`, {
+        method: "POST",
+      });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        toast.error(err.error || "Failed to finalize quotation");
+        toast.error(err.error || "Failed to finalize");
         setFinalizing(false);
         return;
       }
@@ -94,7 +95,7 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success("Quotation finalized & PDF downloaded!");
+      toast.success("Quotation finalized & PDF downloaded");
     } catch {
       toast.error("Error finalizing quotation");
     } finally {
@@ -105,22 +106,23 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
   const handleMarkAsDraft = async () => {
     quote.updateStatus("draft");
     await quote.manualSave();
-    toast.success("Quotation status changed to Draft");
+    toast.success("Status changed to Draft");
   };
 
   if (quote.loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 min-h-screen pb-16">
-      {/* Left Pane: Form Controls */}
-      <div className="flex-1 min-w-0 flex flex-col gap-6">
-        <div className="flex items-center justify-between bg-card p-4 rounded-xl border shadow-sm flex-wrap gap-3">
+    <div className="flex flex-col lg:flex-row gap-6 pb-16">
+      {/* Left Pane */}
+      <div className="flex-1 min-w-0 flex flex-col gap-5">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between bg-card px-4 py-3 rounded-lg border shadow-sm flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Link href="/quotations">
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -129,31 +131,40 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight">Edit Quotation</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">
+                  Edit Quotation
+                </h1>
                 <Badge
-                  variant={quote.status === "finalized" ? "default" : "secondary"}
-                  className="capitalize"
+                  variant={
+                    quote.status === "finalized" ? "default" : "secondary"
+                  }
+                  className="capitalize text-[11px]"
                 >
                   {quote.status}
                 </Badge>
                 {isDocumentLocked && (
                   <Badge
                     variant="outline"
-                    className="bg-amber-500/10 text-amber-700 border-amber-500/30 flex items-center gap-1"
+                    className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1"
                   >
-                    <Lock className="h-3 w-3" /> Locked to Staff
+                    <Lock className="h-3 w-3" /> Locked
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-0.5 text-xs">
-                {quote.dirty && <span className="text-amber-600 font-medium">Unsaved changes</span>}
-                {quote.saving && <span className="text-muted-foreground">Saving...</span>}
+              <div className="flex items-center gap-2 mt-0.5 text-[12px]">
+                {quote.dirty && (
+                  <span className="text-amber-600 font-medium">
+                    Unsaved changes
+                  </span>
+                )}
+                {quote.saving && (
+                  <span className="text-muted-foreground">Saving...</span>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Admin Document Lock Button */}
             {isAdmin && (
               <Button
                 variant={isDocumentLocked ? "destructive" : "outline"}
@@ -167,17 +178,16 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
               >
                 {isDocumentLocked ? (
                   <>
-                    <Lock className="h-4 w-4 mr-1.5" /> Locked Document
+                    <Lock className="h-3.5 w-3.5 mr-1.5" /> Locked
                   </>
                 ) : (
                   <>
-                    <Unlock className="h-4 w-4 mr-1.5" /> Lock Document to Staff
+                    <Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff
                   </>
                 )}
               </Button>
             )}
 
-            {/* Save Draft Button */}
             {!isReadOnlyForStaff && (
               <Button
                 variant="outline"
@@ -185,42 +195,42 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
                 onClick={quote.manualSave}
                 disabled={quote.saving}
               >
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-3.5 w-3.5 mr-1.5" />
                 Save Draft
               </Button>
             )}
 
-            {/* Mark as Draft (Admin only when finalized) */}
             {isAdmin && quote.status === "finalized" && (
               <Button variant="ghost" size="sm" onClick={handleMarkAsDraft}>
-                <RotateCcw className="h-4 w-4 mr-1.5" /> Mark as Draft
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Mark as Draft
               </Button>
             )}
 
-            {/* Finalize Button */}
             {!isReadOnlyForStaff && (
               <Button size="sm" onClick={finalize} disabled={finalizing}>
                 {finalizing ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 ) : quote.status === "finalized" ? (
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-400" />
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
                 ) : (
-                  <FileDown className="h-4 w-4 mr-2" />
+                  <FileDown className="h-3.5 w-3.5 mr-1.5" />
                 )}
-                {quote.status === "finalized" ? "Re-Finalize & Download PDF" : "Finalize & Download PDF"}
+                {quote.status === "finalized"
+                  ? "Re-Finalize & Download"
+                  : "Finalize & Download"}
               </Button>
             )}
           </div>
         </div>
 
-        {/* Staff Locked Document Warning Banner */}
         {isReadOnlyForStaff && (
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3 text-amber-900 dark:text-amber-200">
-            <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
+          <div className="px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-3 text-amber-900">
+            <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
             <div>
-              <p className="font-medium text-sm">Quotation Document Locked</p>
-              <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                This document has been locked by an administrator. Staff members cannot edit header details or line items.
+              <p className="text-sm font-medium">Document Locked</p>
+              <p className="text-[12px] text-amber-800/80">
+                This quotation has been locked by an administrator. Staff cannot
+                edit header details or line items.
               </p>
             </div>
           </div>
@@ -233,8 +243,12 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
         />
 
         <Card className="p-5 shadow-sm overflow-visible">
-          <div className="flex items-center justify-between mb-4 border-b pb-3">
-            <h3 className="font-semibold text-base">Line Items</h3>
+          <div className="flex items-center justify-between mb-4 pb-3 border-b">
+            <h3 className="text-sm font-semibold">Line Items</h3>
+            <span className="text-[12px] text-muted-foreground">
+              {quote.lineItems.length} item
+              {quote.lineItems.length !== 1 ? "s" : ""}
+            </span>
           </div>
           <QuotationLineItems
             lineItems={quote.lineItems}
@@ -247,20 +261,20 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
             onClearDraft={() => {}}
             readOnly={isReadOnlyForStaff}
           />
-          <div className="mt-6 border-t pt-4">
+          <div className="mt-6 pt-4 border-t">
             <QuotationTotals totals={quote.totals} />
           </div>
         </Card>
       </div>
 
-      {/* Right Pane: Live Preview */}
-      <div className="w-full lg:w-[460px] xl:w-[500px] flex-shrink-0 lg:sticky lg:top-6 self-start space-y-2">
+      {/* Right Pane: Preview */}
+      <div className="w-full lg:w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
         <div className="flex items-center justify-between px-1">
-          <h2 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+          <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
             Live Preview
           </h2>
         </div>
-        <div className="shadow-lg rounded-xl overflow-hidden border">
+        <div className="shadow-lg rounded-lg overflow-hidden border">
           <QuotationPreview
             header={quote.header}
             lineItems={quote.lineItems}
@@ -269,16 +283,15 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Document Lock Confirmation Dialog */}
       <Dialog open={showDocLockDialog} onOpenChange={setShowDocLockDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-2 text-amber-600 font-semibold mb-1">
-              <ShieldAlert className="h-5 w-5" />
+              <ShieldAlert className="h-4 w-4" />
               <span>
                 {isDocumentLocked
-                  ? "Unlock Quotation Document?"
-                  : "Lock Quotation Document to Staff?"}
+                  ? "Unlock Quotation?"
+                  : "Lock Quotation to Staff?"}
               </span>
             </div>
             <DialogTitle className="text-base font-medium">
@@ -286,8 +299,8 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
             </DialogTitle>
             <DialogDescription className="text-sm pt-2 text-muted-foreground">
               {isDocumentLocked
-                ? "Unlocking this document will allow staff members to edit customer details, terms, and line items."
-                : "Locking this document will lock the entire quotation for staff members. Staff will not be able to modify customer details, header information, or line items."}
+                ? "Unlocking allows staff to edit customer details, terms, and line items."
+                : "Locking prevents staff from modifying any part of this quotation."}
             </DialogDescription>
           </DialogHeader>
 
@@ -310,11 +323,11 @@ export default function EditQuotationPage({ params }: { params: Promise<{ id: st
             >
               {isDocumentLocked ? (
                 <>
-                  <Unlock className="h-3.5 w-3.5 mr-1.5" /> Unlock Document
+                  <Unlock className="h-3.5 w-3.5 mr-1.5" /> Unlock
                 </>
               ) : (
                 <>
-                  <Lock className="h-3.5 w-3.5 mr-1.5" /> Lock Document to Staff
+                  <Lock className="h-3.5 w-3.5 mr-1.5" /> Lock
                 </>
               )}
             </Button>
