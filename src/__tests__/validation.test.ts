@@ -121,6 +121,31 @@ describe("lineItemSchema", () => {
     const result = lineItemSchema.safeParse(validLineItem({ id: 1.5 }));
     expect(result.success).toBe(false);
   });
+
+  it("accepts optional isLocked boolean", () => {
+    const result = lineItemSchema.safeParse(validLineItem({ isLocked: true }));
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts missing isLocked field", () => {
+    const result = lineItemSchema.safeParse({
+      key: "abc",
+      lineNo: 1,
+      masterItemId: null,
+      description: "Test",
+      unit: "",
+      rate: 0,
+      gstPercent: 0,
+      qty: 0,
+      netValue: 0,
+      quoteMode: "quantity",
+      weightKg: null,
+      weightPerUnit: null,
+      pieceCount: null,
+      piecesPerUnit: null,
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 // ── Partial line item schema (for API submits) ───────────────────────────────

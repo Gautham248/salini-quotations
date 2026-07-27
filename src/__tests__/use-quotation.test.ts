@@ -29,9 +29,12 @@ function makeLineItem(overrides: Partial<LineItem> = {}): LineItem {
     weightPerUnit: null,
     pieceCount: null,
     piecesPerUnit: null,
+    isLocked: false,
     ...overrides,
   };
 }
+
+// ── addLineItem ──────────────────────────────────────────────────────────────
 
 describe("useQuotation - addLineItem validation", () => {
   it("adds a valid line item", () => {
@@ -98,7 +101,33 @@ describe("useQuotation - addLineItem validation", () => {
     });
     expect(result.current.lineItems[0].netValue).toBe(150);
   });
+
+  it("stores isLocked status on add", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ isLocked: true }));
+    });
+    expect(result.current.lineItems[0].isLocked).toBe(true);
+  });
+
+  it("defaults isLocked to undefined when not provided", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ isLocked: undefined }));
+    });
+    expect(result.current.lineItems[0].isLocked).toBeUndefined();
+  });
+
+  it("auto-calculates weightKg from qty * weightPerUnit", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ qty: 10, weightPerUnit: 0.5, weightKg: null }));
+    });
+    expect(result.current.lineItems[0].weightKg).toBe(5);
+  });
 });
+
+// ── updateLineItem ───────────────────────────────────────────────────────────
 
 describe("useQuotation - updateLineItem validation", () => {
   it("clamps negative qty to 0", () => {
@@ -161,7 +190,70 @@ describe("useQuotation - updateLineItem validation", () => {
     });
     expect(result.current.lineItems[0].qty).toBe(original);
   });
+
+  it("updates isLocked as boolean", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ isLocked: false }));
+    });
+    const key = result.current.lineItems[0].key;
+    act(() => {
+      result.current.updateLineItem(key, "isLocked", true);
+    });
+    expect(result.current.lineItems[0].isLocked).toBe(true);
+  });
+
+  it("toggles isLocked from true to false", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ isLocked: true }));
+    });
+    const key = result.current.lineItems[0].key;
+    act(() => {
+      result.current.updateLineItem(key, "isLocked", false);
+    });
+    expect(result.current.lineItems[0].isLocked).toBe(false);
+  });
+
+  it("auto-calculates weight on qty change", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ qty: 1, weightPerUnit: 10, weightKg: null }));
+    });
+    const key = result.current.lineItems[0].key;
+    act(() => {
+      result.current.updateLineItem(key, "qty", 5);
+    });
+    expect(result.current.lineItems[0].weightKg).toBe(50);
+  });
+
+  it("recalculates netValue on rate change", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ qty: 3, rate: 50 }));
+    });
+    const key = result.current.lineItems[0].key;
+    act(() => {
+      result.current.updateLineItem(key, "rate", 100);
+    });
+    expect(result.current.lineItems[0].netValue).toBe(300);
+    expect(result.current.lineItems[0].rate).toBe(100);
+  });
+
+  it("auto-calculates pieceCount on qty change with piecesPerUnit", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ qty: 1, piecesPerUnit: 100, pieceCount: null }));
+    });
+    const key = result.current.lineItems[0].key;
+    act(() => {
+      result.current.updateLineItem(key, "qty", 3);
+    });
+    expect(result.current.lineItems[0].pieceCount).toBe(300);
+  });
 });
+
+// ── removeLineItem ───────────────────────────────────────────────────────────
 
 describe("useQuotation - removeLineItem", () => {
   it("removes a line item by key", () => {
@@ -179,6 +271,8 @@ describe("useQuotation - removeLineItem", () => {
     expect(result.current.lineItems[0].description).toBe("B");
   });
 });
+
+// ── moveLineItem ─────────────────────────────────────────────────────────────
 
 describe("useQuotation - moveLineItem", () => {
   it("moves item up", () => {
@@ -222,6 +316,8 @@ describe("useQuotation - moveLineItem", () => {
   });
 });
 
+// ── syncCatalogItems ─────────────────────────────────────────────────────────
+
 describe("useQuotation - syncCatalogItems", () => {
   it("filters out items with qty = 0 and keeps existing state", () => {
     const { result } = renderHook(() => useQuotation());
@@ -242,7 +338,6 @@ describe("useQuotation - syncCatalogItems", () => {
         },
       ]);
     });
-    // Custom items stay, catalog items with qty=0 are excluded
     expect(result.current.lineItems).toHaveLength(1);
   });
 
@@ -256,7 +351,138 @@ describe("useQuotation - syncCatalogItems", () => {
     });
     expect(result.current.lineItems).toHaveLength(0);
   });
+
+  it("matches legacy custom items by description and merges catalog data", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({
+        masterItemId: null,
+        description: "Steel Bar",
+        unit: "pcs",
+        rate: 50,
+        isLocked: true,
+      }));
+    });
+    act(() => {
+      result.current.syncCatalogItems([{
+        masterItemId: 99,
+        description: "Steel Bar",
+        unit: "Kg",
+        rate: 100,
+        gstPercent: 18,
+        qty: 5,
+        weightPerUnit: null,
+        piecesPerUnit: null,
+      }]);
+    });
+    const items = result.current.lineItems;
+    // Should now have masterItemId from catalog, updated unit/rate, still locked
+    const merged = items.find(i => i.description === "Steel Bar");
+    expect(merged).toBeDefined();
+    expect(merged?.masterItemId).toBe(99);
+    expect(merged?.rate).toBe(100);
+    expect(merged?.unit).toBe("Kg");
+    expect(merged?.isLocked).toBe(true);
+  });
+
+  it("preserves unmatched custom items", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ description: "Unique Custom", masterItemId: null }));
+    });
+    act(() => {
+      result.current.syncCatalogItems([{
+        masterItemId: 5,
+        description: "Different Item",
+        unit: "Kg",
+        rate: 50,
+        gstPercent: 18,
+        qty: 2,
+        weightPerUnit: null,
+        piecesPerUnit: null,
+      }]);
+    });
+    expect(result.current.lineItems).toHaveLength(2);
+    expect(result.current.lineItems.some(i => i.description === "Unique Custom")).toBe(true);
+    expect(result.current.lineItems.some(i => i.description === "Different Item")).toBe(true);
+  });
+
+  it("updates existing catalog items by masterItemId", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({
+        masterItemId: 5,
+        description: "Old Desc",
+        rate: 50,
+        qty: 1,
+      }));
+    });
+    act(() => {
+      result.current.syncCatalogItems([{
+        masterItemId: 5,
+        description: "Updated Desc",
+        unit: "Kg",
+        rate: 75,
+        gstPercent: 18,
+        qty: 3,
+        weightPerUnit: null,
+        piecesPerUnit: null,
+      }]);
+    });
+    const item = result.current.lineItems[0];
+    expect(item.description).toBe("Updated Desc");
+    expect(item.rate).toBe(75);
+    expect(item.qty).toBe(3);
+  });
+
+  it("auto-calculates weightKg from qty * weightPerUnit in catalog sync", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.syncCatalogItems([{
+        masterItemId: 1,
+        description: "Heavy Item",
+        unit: "Kg",
+        rate: 100,
+        gstPercent: 18,
+        qty: 5,
+        weightPerUnit: 2,
+        piecesPerUnit: null,
+      }]);
+    });
+    expect(result.current.lineItems[0].weightKg).toBe(10);
+  });
+
+  it("auto-calculates pieceCount from qty * piecesPerUnit in catalog sync", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.syncCatalogItems([{
+        masterItemId: 1,
+        description: "Pack Item",
+        unit: "Pcs",
+        rate: 10,
+        gstPercent: 5,
+        qty: 3,
+        weightPerUnit: null,
+        piecesPerUnit: 100,
+      }]);
+    });
+    expect(result.current.lineItems[0].pieceCount).toBe(300);
+  });
+
+  it("filters empty qty but preserves state when mixed with valid qty", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.syncCatalogItems([
+        { masterItemId: 1, description: "Empty", unit: "Kg", rate: 100, gstPercent: 18, qty: 0, weightPerUnit: null, piecesPerUnit: null },
+        { masterItemId: 2, description: "Real", unit: "Kg", rate: 50, gstPercent: 18, qty: 10, weightPerUnit: null, piecesPerUnit: null },
+      ]);
+    });
+    expect(result.current.lineItems).toHaveLength(1);
+    expect(result.current.lineItems[0].description).toBe("Real");
+  });
 });
+
+// ── updateHeader ─────────────────────────────────────────────────────────────
 
 describe("useQuotation - updateHeader", () => {
   it("updates header field", () => {
@@ -267,6 +493,51 @@ describe("useQuotation - updateHeader", () => {
     expect(result.current.header.customerName).toBe("ACME Corp");
   });
 });
+
+// ── updateIsLocked / updateStatus ────────────────────────────────────────────
+
+describe("useQuotation - updateIsLocked", () => {
+  it("defaults isLocked to false", () => {
+    const { result } = renderHook(() => useQuotation());
+    expect(result.current.isLocked).toBe(false);
+  });
+
+  it("sets isLocked to true", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.updateIsLocked(true);
+    });
+    expect(result.current.isLocked).toBe(true);
+    expect(result.current.dirty).toBe(true);
+  });
+
+  it("sets isLocked back to false", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.updateIsLocked(true);
+      result.current.updateIsLocked(false);
+    });
+    expect(result.current.isLocked).toBe(false);
+  });
+});
+
+describe("useQuotation - updateStatus", () => {
+  it("defaults status to draft", () => {
+    const { result } = renderHook(() => useQuotation());
+    expect(result.current.status).toBe("draft");
+  });
+
+  it("updates status to finalized", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.updateStatus("finalized");
+    });
+    expect(result.current.status).toBe("finalized");
+    expect(result.current.dirty).toBe(true);
+  });
+});
+
+// ── totals ───────────────────────────────────────────────────────────────────
 
 describe("useQuotation - totals", () => {
   it("computes totals from line items", () => {

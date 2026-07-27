@@ -16,6 +16,7 @@ export const lineItemSchema = z.object({
   weightPerUnit: z.number().finite().positive().nullable(),
   pieceCount: z.number().finite().int().min(0).nullable(),
   piecesPerUnit: z.number().finite().int().positive().nullable(),
+  isLocked: z.boolean().optional(),
 });
 
 export const partialLineItemSchema = z.object({

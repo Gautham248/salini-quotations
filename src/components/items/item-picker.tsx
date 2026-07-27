@@ -74,12 +74,42 @@ function highlight(text: string, query: string) {
   );
 }
 
+// ── In-Memory Catalog Cache ───────────────────────────────────────────────────
+
+let cachedItems: MI[] | null = null;
+let cachedCategories: Category[] | null = null;
+let catalogFetchPromise: Promise<{ items: MI[]; categories: Category[] }> | null = null;
+
+export function invalidateCatalogCache() {
+  cachedItems = null;
+  cachedCategories = null;
+}
+
+async function fetchCatalogCached(): Promise<{ items: MI[]; categories: Category[] }> {
+  if (cachedItems && cachedCategories) {
+    return { items: cachedItems, categories: cachedCategories };
+  }
+  if (!catalogFetchPromise) {
+    catalogFetchPromise = fetch("/api/items")
+      .then(r => r.json())
+      .then(d => {
+        cachedItems = d.items ?? [];
+        cachedCategories = d.categories ?? [];
+        return { items: cachedItems!, categories: cachedCategories! };
+      })
+      .finally(() => {
+        catalogFetchPromise = null;
+      });
+  }
+  return catalogFetchPromise;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearDraft }: ItemPickerProps) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<MI[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<MI[]>(cachedItems ?? []);
+  const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<number | null>(null);
   const [cart, setCart] = useState<Map<number, CartItem>>(new Map());
@@ -90,45 +120,55 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
   // Load catalog and populate existing line items when modal opens
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    fetch("/api/items")
-      .then(r => r.json())
-      .then(d => {
-        const fetchedItems: MI[] = d.items ?? [];
-        setItems(fetchedItems);
-        setCategories(d.categories ?? []);
 
-        if (existingLineItems && existingLineItems.length > 0) {
-          const initialMap = new Map<number, CartItem>();
-          existingLineItems.forEach(lineItem => {
-            const catalogMatch = fetchedItems.find(m =>
-              (lineItem.masterItemId && m.id === lineItem.masterItemId) ||
-              (m.description.trim().toLowerCase() === lineItem.description.trim().toLowerCase())
-            );
-            const masterId = lineItem.masterItemId || catalogMatch?.id;
-            if (masterId) {
-              initialMap.set(masterId, {
-                masterItemId: masterId,
-                description: lineItem.description,
-                unit: lineItem.unit || catalogMatch?.unit?.name || "",
-                unitId: catalogMatch?.unit?.id ?? 0,
-                rate: lineItem.rate,
-                gstPercent: lineItem.gstPercent,
-                qty: lineItem.qty || 1,
-                weightPerUnit: lineItem.weightPerUnit ?? catalogMatch?.weightPerUnit ?? null,
-                piecesPerUnit: lineItem.piecesPerUnit ?? catalogMatch?.piecesPerUnit ?? null,
-              });
-            }
-          });
-          setCart(initialMap);
-        } else {
-          setCart(new Map());
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-        setTimeout(() => searchRef.current?.focus(), 80);
-      });
+    function populateCart(fetchedItems: MI[]) {
+      if (existingLineItems && existingLineItems.length > 0) {
+        const initialMap = new Map<number, CartItem>();
+        existingLineItems.forEach(lineItem => {
+          const catalogMatch = fetchedItems.find(m =>
+            (lineItem.masterItemId && m.id === lineItem.masterItemId) ||
+            (m.description.trim().toLowerCase() === lineItem.description.trim().toLowerCase())
+          );
+          const masterId = lineItem.masterItemId || catalogMatch?.id;
+          if (masterId) {
+            initialMap.set(masterId, {
+              masterItemId: masterId,
+              description: lineItem.description,
+              unit: lineItem.unit || catalogMatch?.unit?.name || "",
+              unitId: catalogMatch?.unit?.id ?? 0,
+              rate: lineItem.rate,
+              gstPercent: lineItem.gstPercent,
+              qty: lineItem.qty || 1,
+              weightPerUnit: lineItem.weightPerUnit ?? catalogMatch?.weightPerUnit ?? null,
+              piecesPerUnit: lineItem.piecesPerUnit ?? catalogMatch?.piecesPerUnit ?? null,
+            });
+          }
+        });
+        setCart(initialMap);
+      } else {
+        setCart(new Map());
+      }
+    }
+
+    if (cachedItems && cachedCategories) {
+      setItems(cachedItems);
+      setCategories(cachedCategories);
+      setLoading(false);
+      populateCart(cachedItems);
+      setTimeout(() => searchRef.current?.focus(), 80);
+    } else {
+      setLoading(true);
+      fetchCatalogCached()
+        .then(({ items: fetchedItems, categories: fetchedCats }) => {
+          setItems(fetchedItems);
+          setCategories(fetchedCats);
+          populateCart(fetchedItems);
+        })
+        .finally(() => {
+          setLoading(false);
+          setTimeout(() => searchRef.current?.focus(), 80);
+        });
+    }
   }, [open, existingLineItems]);
 
   // Fuzzy filter: every search token must appear in description or category name
@@ -199,12 +239,21 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
     setActiveCat(null);
   }
 
+  const hasExistingLineItems = Boolean(existingLineItems && existingLineItems.length > 0);
+
   function handleConfirm() {
-    if (cart.size === 0) { toast.error("Add at least one item to the quote"); return; }
+    if (cart.size === 0 && !hasExistingLineItems) {
+      toast.error("Add at least one item to the quote");
+      return;
+    }
     onConfirm(Array.from(cart.values()));
     setCart(new Map());
     doClose();
-    toast.success(`${cart.size} item${cart.size !== 1 ? "s" : ""} added to quote`);
+    if (cart.size === 0) {
+      toast.success("Catalog items removed from quotation");
+    } else {
+      toast.success(`${cart.size} item${cart.size !== 1 ? "s" : ""} updated in quote`);
+    }
   }
 
   function handleSaveDraft() {
@@ -255,12 +304,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleConfirm}
-                disabled={cart.size === 0}
+                disabled={cart.size === 0 && !hasExistingLineItems}
                 size="sm"
                 className="gap-2 px-4 shadow-sm"
               >
                 <Check className="h-4 w-4" />
-                Add to Quote {cart.size > 0 ? `(${cart.size})` : ""}
+                {hasExistingLineItems
+                  ? cart.size > 0 ? `Update Quote (${cart.size})` : "Update Quote (Remove All)"
+                  : `Add to Quote ${cart.size > 0 ? `(${cart.size})` : ""}`}
               </Button>
               <button
                 onClick={handleAttemptClose}
@@ -520,15 +571,22 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
               </div>
 
               {/* Cart footer */}
-              {cart.size > 0 && (
+              {(cart.size > 0 || hasExistingLineItems) && (
                 <div className="flex-shrink-0 border-t bg-card px-4 py-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Subtotal (excl. GST)</span>
                     <span className="text-sm font-bold tabular-nums">₹{subtotal.toFixed(2)}</span>
                   </div>
-                  <Button onClick={handleConfirm} className="w-full gap-2" size="sm">
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={cart.size === 0 && !hasExistingLineItems}
+                    className="w-full gap-2"
+                    size="sm"
+                  >
                     <ChevronRight className="h-4 w-4" />
-                    Add {cart.size} Item{cart.size !== 1 ? "s" : ""} to Quote
+                    {hasExistingLineItems
+                      ? cart.size > 0 ? `Update Quote (${cart.size} item${cart.size !== 1 ? "s" : ""})` : "Update Quote (Remove All)"
+                      : `Add ${cart.size} Item${cart.size !== 1 ? "s" : ""} to Quote`}
                   </Button>
                 </div>
               )}

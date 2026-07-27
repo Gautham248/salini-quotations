@@ -5,6 +5,7 @@ export interface LineItem {
   unit: string; rate: number; gstPercent: number; qty: number; netValue: number;
   quoteMode: string; weightKg: number | null; weightPerUnit: number | null;
   pieceCount: number | null; piecesPerUnit: number | null;
+  isLocked?: boolean;
 }
 export interface QuotationHeader { customerName: string; customerAddress: string; customerPlace: string; customerGstin: string; quotDate: string; refNo: string; deliveryTerms: string; gstNote: string; validity: string; paymentTerms: string; }
 const DH: QuotationHeader = { customerName: "", customerAddress: "", customerPlace: "", customerGstin: "", quotDate: new Date().toISOString().slice(0,10), refNo: "", deliveryTerms: "", gstNote: "", validity: "LIMITED", paymentTerms: "READY PAYMENT" };
@@ -20,31 +21,170 @@ function calcNetValue(item: LineItem): number {
 }
 
 export function useQuotation(existingId?: number) {
-  const [id, setId] = useState<number | undefined>(existingId); const [header, setHeader] = useState(DH); const [lineItems, setLineItems] = useState<LineItem[]>([]);
-  const [loading, setLoading] = useState(true); const [dirty, setDirty] = useState(false); const [saving, setSaving] = useState(false);
-  const dirtiedRef = useRef(false); const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); const itemsRef = useRef(lineItems); const headerRef = useRef(header);
+  const [id, setId] = useState<number | undefined>(existingId);
+  const [header, setHeader] = useState(DH);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
+  const [status, setStatus] = useState("draft");
+  const [loading, setLoading] = useState(true);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const dirtiedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemsRef = useRef(lineItems);
+  const headerRef = useRef(header);
+  const isLockedRef = useRef(isLocked);
+  const statusRef = useRef(status);
+
   useEffect(() => { itemsRef.current = lineItems; }, [lineItems]);
   useEffect(() => { headerRef.current = header; }, [header]);
-  useEffect(() => { if (existingId) { fetch(`/api/quotations/${existingId}`).then(r => r.json()).then(d => { setHeader({ customerName: d.customerName, customerAddress: d.customerAddress || "", customerPlace: d.customerPlace || "", customerGstin: d.customerGstin || "", quotDate: new Date(d.quotDate).toISOString().slice(0,10), refNo: d.refNo, deliveryTerms: d.deliveryTerms || "", gstNote: d.gstNote || "", validity: d.validity, paymentTerms: d.paymentTerms }); setLineItems(d.lineItems.map((item: Record<string, unknown>) => {
-    const mi = item.masterItem as { weightPerUnit?: number | null; piecesPerUnit?: number | null } | null;
-    const wpu = mi?.weightPerUnit ?? null;
-    const ppu = mi?.piecesPerUnit ?? null;
-    const qty = (item.qty as number) || 0;
-    const weightKg = item.weightKg != null ? (item.weightKg as number) : (wpu && wpu > 0 ? parseFloat((qty * wpu).toFixed(3)) : null);
-    const pieceCount = item.pieceCount != null ? (item.pieceCount as number) : (ppu && ppu > 0 ? Math.round(qty * ppu) : null);
-    return {
-      id: item.id as number, key: crypto.randomUUID(), lineNo: item.lineNo as number, masterItemId: item.masterItemId as number | null,
-      description: item.description as string, unit: item.unit as string, rate: item.rate as number, gstPercent: item.gstPercent as number,
-      qty: qty, netValue: item.netValue as number, quoteMode: (item.quoteMode as string) || "quantity",
-      weightKg, weightPerUnit: wpu, pieceCount, piecesPerUnit: ppu
-    };
-  })); setLoading(false); }); } else setLoading(false); }, [existingId]);
+  useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
+  useEffect(() => { statusRef.current = status; }, [status]);
+
+  useEffect(() => {
+    if (existingId) {
+      fetch(`/api/quotations/${existingId}`)
+        .then(r => r.json())
+        .then(d => {
+          setHeader({
+            customerName: d.customerName,
+            customerAddress: d.customerAddress || "",
+            customerPlace: d.customerPlace || "",
+            customerGstin: d.customerGstin || "",
+            quotDate: new Date(d.quotDate).toISOString().slice(0, 10),
+            refNo: d.refNo,
+            deliveryTerms: d.deliveryTerms || "",
+            gstNote: d.gstNote || "",
+            validity: d.validity,
+            paymentTerms: d.paymentTerms,
+          });
+          setIsLocked(Boolean(d.isLocked));
+          setStatus(d.status || "draft");
+          setLineItems(
+            d.lineItems.map((item: Record<string, unknown>) => {
+              const mi = item.masterItem as {
+                weightPerUnit?: number | null;
+                piecesPerUnit?: number | null;
+              } | null;
+              const wpu = mi?.weightPerUnit ?? null;
+              const ppu = mi?.piecesPerUnit ?? null;
+              const qty = (item.qty as number) || 0;
+              const weightKg =
+                item.weightKg != null
+                  ? (item.weightKg as number)
+                  : wpu && wpu > 0
+                  ? parseFloat((qty * wpu).toFixed(3))
+                  : null;
+              const pieceCount =
+                item.pieceCount != null
+                  ? (item.pieceCount as number)
+                  : ppu && ppu > 0
+                  ? Math.round(qty * ppu)
+                  : null;
+              return {
+                id: item.id as number,
+                key: crypto.randomUUID(),
+                lineNo: item.lineNo as number,
+                masterItemId: item.masterItemId as number | null,
+                description: item.description as string,
+                unit: item.unit as string,
+                rate: item.rate as number,
+                gstPercent: item.gstPercent as number,
+                qty: qty,
+                netValue: item.netValue as number,
+                quoteMode: (item.quoteMode as string) || "quantity",
+                weightKg,
+                weightPerUnit: wpu,
+                pieceCount,
+                piecesPerUnit: ppu,
+                isLocked: Boolean(item.isLocked),
+              };
+            })
+          );
+          setLoading(false);
+        });
+    } else setLoading(false);
+  }, [existingId]);
+
   function markDirty() { dirtiedRef.current = true; setDirty(true); }
 
-  const autosave = useCallback(async () => { if (!dirtiedRef.current || saving) return; setSaving(true);
-    const saveReq = { ...headerRef.current, quotDate: new Date(headerRef.current.quotDate), lineItems: itemsRef.current.map(i => ({ masterItemId: i.masterItemId, lineNo: i.lineNo, description: i.description, unit: i.unit, rate: i.rate, gstPercent: i.gstPercent, qty: i.qty, netValue: i.netValue, quoteMode: i.quoteMode, weightKg: i.weightKg, pieceCount: i.pieceCount })) };
-    try { if (id) { const r = await fetch(`/api/quotations/${id}`, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(saveReq) }); if (r.ok) { dirtiedRef.current = false; setDirty(false); } } else { const r = await fetch("/api/quotations", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(saveReq) }); if (r.ok) { const d = await r.json(); setId(d.id); window.history.replaceState(null, "", `/quotations/${d.id}/edit`); dirtiedRef.current = false; setDirty(false); } } } catch {} finally { setSaving(false); } }, [id, saving]);
-  useEffect(() => { if (!dirty) return; if (saveTimerRef.current) clearTimeout(saveTimerRef.current); saveTimerRef.current = setTimeout(autosave, 15000); return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }; }, [dirty, autosave]);
+  const autosave = useCallback(
+    async (isManual = false) => {
+      if (!isManual && (!dirtiedRef.current || saving)) return;
+      setSaving(true);
+
+      const saveReq = {
+        ...headerRef.current,
+        status: statusRef.current,
+        isLocked: isLockedRef.current,
+        quotDate: new Date(headerRef.current.quotDate),
+        lineItems: itemsRef.current.map(i => ({
+          masterItemId: i.masterItemId,
+          lineNo: i.lineNo,
+          description: i.description,
+          unit: i.unit,
+          rate: i.rate,
+          gstPercent: i.gstPercent,
+          qty: i.qty,
+          netValue: i.netValue,
+          quoteMode: i.quoteMode,
+          weightKg: i.weightKg,
+          pieceCount: i.pieceCount,
+          isLocked: i.isLocked ?? false,
+        })),
+      };
+
+      try {
+        if (id) {
+          const r = await fetch(`/api/quotations/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saveReq),
+          });
+          if (r.ok) {
+            dirtiedRef.current = false;
+            setDirty(false);
+            if (isManual) toast.success("Draft saved successfully");
+          } else {
+            const err = await r.json().catch(() => ({}));
+            if (isManual) toast.error(err.error || "Failed to save draft");
+          }
+        } else {
+          const r = await fetch("/api/quotations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(saveReq),
+          });
+          if (r.ok) {
+            const d = await r.json();
+            setId(d.id);
+            window.history.replaceState(null, "", `/quotations/${d.id}/edit`);
+            dirtiedRef.current = false;
+            setDirty(false);
+            if (isManual) toast.success("Draft saved successfully");
+          } else {
+            const err = await r.json().catch(() => ({}));
+            if (isManual) toast.error(err.error || "Failed to save draft");
+          }
+        }
+      } catch {
+        if (isManual) toast.error("Network error while saving draft");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [id, saving]
+  );
+
+  useEffect(() => {
+    if (!dirty) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => autosave(false), 15000);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [dirty, autosave]);
 
   function updateHeader(f: keyof QuotationHeader, v: string) { setHeader(p => ({ ...p, [f]: v })); markDirty(); }
   function addLineItem(item: LineItem) {
@@ -62,7 +202,7 @@ export function useQuotation(existingId?: number) {
     newItem.netValue = calcNetValue(newItem);
     setLineItems(p => [...p, newItem]); markDirty();
   }
-  function updateLineItem(key: string, field: keyof LineItem, value: string | number | null) {
+  function updateLineItem(key: string, field: keyof LineItem, value: string | number | boolean | null) {
     if (typeof value === "number" && !Number.isFinite(value)) return;
     setLineItems(p => p.map(i => { if (i.key !== key) return i;
       let clamped = value;
@@ -185,6 +325,35 @@ export function useQuotation(existingId?: number) {
     markDirty();
   }
 
+  function updateIsLocked(locked: boolean) {
+    setIsLocked(locked);
+    markDirty();
+  }
+
+  function updateStatus(newStatus: string) {
+    setStatus(newStatus);
+    markDirty();
+  }
+
   const totals = computeTotals(lineItems);
-  return { id, header, lineItems, totals, loading, dirty, saving, updateHeader, addLineItem, updateLineItem, removeLineItem, moveLineItem, syncCatalogItems, manualSave: () => autosave() };
+  return {
+    id,
+    header,
+    lineItems,
+    totals,
+    isLocked,
+    status,
+    loading,
+    dirty,
+    saving,
+    updateHeader,
+    updateIsLocked,
+    updateStatus,
+    addLineItem,
+    updateLineItem,
+    removeLineItem,
+    moveLineItem,
+    syncCatalogItems,
+    manualSave: () => autosave(true),
+  };
 }

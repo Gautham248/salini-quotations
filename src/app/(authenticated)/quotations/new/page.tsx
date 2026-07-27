@@ -8,12 +8,61 @@ export default function NewQuotationPage() {
     const r = await fetch(`/api/quotations/${quote.id}/finalize`, { method:"POST" }); if (!r.ok) { toast.error((await r.json()).error); setFinalizing(false); return; }
     const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Quotation_${quote.id}.pdf`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); toast.success("Finalized"); router.push("/quotations"); }
   if (quote.loading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div>;
-  return <div className="flex gap-6 h-[calc(100vh-4rem)]">
-    <div className="w-3/5 flex flex-col gap-4 overflow-auto pr-2">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold">New Quotation</h1>{quote.dirty && <span className="text-xs text-muted-foreground">Unsaved</span>}{quote.saving && <span className="text-xs text-muted-foreground ml-2">Saving...</span>}</div><div className="flex gap-2"><Button variant="outline" onClick={quote.manualSave} disabled={quote.saving}><Save className="h-4 w-4 mr-2"/>Save Draft</Button><Button onClick={finalize} disabled={finalizing}>{finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <FileDown className="h-4 w-4 mr-2"/>}Generate</Button></div></div>
-      <QuotationHeaderForm header={quote.header} onChange={quote.updateHeader}/>
-      <Card className="p-4"><h3 className="font-medium mb-3">Line Items</h3><QuotationLineItems lineItems={quote.lineItems} onAdd={quote.addLineItem} onUpdate={quote.updateLineItem} onRemove={quote.removeLineItem} onMove={quote.moveLineItem} onSyncCatalogItems={quote.syncCatalogItems} onSaveDraft={quote.manualSave} onClearDraft={() => {}}/><div className="mt-4"><QuotationTotals totals={quote.totals}/></div></Card>
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 min-h-screen pb-16">
+      {/* Left Pane: Form Controls */}
+      <div className="flex-1 min-w-0 flex flex-col gap-6">
+        <div className="flex items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">New Quotation</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              {quote.dirty && <span className="text-xs text-amber-600 font-medium">Unsaved changes</span>}
+              {quote.saving && <span className="text-xs text-muted-foreground ml-2">Saving...</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={quote.manualSave} disabled={quote.saving}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button size="sm" onClick={finalize} disabled={finalizing}>
+              {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+              Generate PDF
+            </Button>
+          </div>
+        </div>
+
+        <QuotationHeaderForm header={quote.header} onChange={quote.updateHeader} />
+
+        <Card className="p-5 shadow-sm overflow-visible">
+          <div className="flex items-center justify-between mb-4 border-b pb-3">
+            <h3 className="font-semibold text-base">Line Items</h3>
+          </div>
+          <QuotationLineItems
+            lineItems={quote.lineItems}
+            onAdd={quote.addLineItem}
+            onUpdate={quote.updateLineItem}
+            onRemove={quote.removeLineItem}
+            onMove={quote.moveLineItem}
+            onSyncCatalogItems={quote.syncCatalogItems}
+            onSaveDraft={quote.manualSave}
+            onClearDraft={() => {}}
+          />
+          <div className="mt-6 border-t pt-4">
+            <QuotationTotals totals={quote.totals} />
+          </div>
+        </Card>
+      </div>
+
+      {/* Right Pane: Live Preview */}
+      <div className="w-full lg:w-[460px] xl:w-[500px] flex-shrink-0 lg:sticky lg:top-6 self-start space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Live Preview</h2>
+        </div>
+        <div className="shadow-lg rounded-xl overflow-hidden border">
+          <QuotationPreview header={quote.header} lineItems={quote.lineItems} totals={quote.totals} />
+        </div>
+      </div>
     </div>
-    <div className="w-2/5 sticky top-0"><h2 className="font-semibold text-sm text-muted-foreground mb-2">Live Preview</h2><QuotationPreview header={quote.header} lineItems={quote.lineItems} totals={quote.totals}/></div>
-  </div>;
+  );
 }
