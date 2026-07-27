@@ -40,6 +40,16 @@ export interface CartItem {
 export type SelectedItem = CartItem;
 
 interface ItemPickerProps {
+  existingLineItems?: {
+    masterItemId?: number | null;
+    description: string;
+    unit?: string;
+    rate: number;
+    gstPercent: number;
+    qty: number;
+    weightPerUnit?: number | null;
+    piecesPerUnit?: number | null;
+  }[];
   onConfirm: (items: SelectedItem[]) => void;
   onSaveDraft: () => void;
   onClearDraft: () => void;
@@ -66,7 +76,7 @@ function highlight(text: string, query: string) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerProps) {
+export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearDraft }: ItemPickerProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<MI[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -77,15 +87,49 @@ export function ItemPicker({ onConfirm, onSaveDraft, onClearDraft }: ItemPickerP
   const [confirmClose, setConfirmClose] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Load catalog when modal opens
+  // Load catalog and populate existing line items when modal opens
   useEffect(() => {
     if (!open) return;
     setLoading(true);
     fetch("/api/items")
       .then(r => r.json())
-      .then(d => { setItems(d.items ?? []); setCategories(d.categories ?? []); })
-      .finally(() => { setLoading(false); setTimeout(() => searchRef.current?.focus(), 80); });
-  }, [open]);
+      .then(d => {
+        const fetchedItems: MI[] = d.items ?? [];
+        setItems(fetchedItems);
+        setCategories(d.categories ?? []);
+
+        if (existingLineItems && existingLineItems.length > 0) {
+          const initialMap = new Map<number, CartItem>();
+          existingLineItems.forEach(lineItem => {
+            const catalogMatch = fetchedItems.find(m =>
+              (lineItem.masterItemId && m.id === lineItem.masterItemId) ||
+              (m.description.trim().toLowerCase() === lineItem.description.trim().toLowerCase())
+            );
+            const masterId = lineItem.masterItemId || catalogMatch?.id;
+            if (masterId) {
+              initialMap.set(masterId, {
+                masterItemId: masterId,
+                description: lineItem.description,
+                unit: lineItem.unit || catalogMatch?.unit?.name || "",
+                unitId: catalogMatch?.unit?.id ?? 0,
+                rate: lineItem.rate,
+                gstPercent: lineItem.gstPercent,
+                qty: lineItem.qty || 1,
+                weightPerUnit: lineItem.weightPerUnit ?? catalogMatch?.weightPerUnit ?? null,
+                piecesPerUnit: lineItem.piecesPerUnit ?? catalogMatch?.piecesPerUnit ?? null,
+              });
+            }
+          });
+          setCart(initialMap);
+        } else {
+          setCart(new Map());
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        setTimeout(() => searchRef.current?.focus(), 80);
+      });
+  }, [open, existingLineItems]);
 
   // Fuzzy filter: every search token must appear in description or category name
   const filtered = useMemo(() => {

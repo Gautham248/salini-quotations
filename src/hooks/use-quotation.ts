@@ -109,20 +109,32 @@ export function useQuotation(existingId?: number) {
     piecesPerUnit: number | null;
   }[]) {
     setLineItems(prev => {
-      const customItems = prev.filter(i => i.masterItemId === null);
-      const existingCatalogMap = new Map<number, LineItem>();
-      prev.filter(i => i.masterItemId !== null).forEach(i => {
-        existingCatalogMap.set(i.masterItemId!, i);
+      const existingCatalogMap = new Map<number | string, LineItem>();
+      const customItems: LineItem[] = [];
+
+      prev.forEach(i => {
+        if (i.masterItemId) {
+          existingCatalogMap.set(i.masterItemId, i);
+        } else {
+          const selMatch = selected.find(s => s.description.trim().toLowerCase() === i.description.trim().toLowerCase());
+          if (selMatch) {
+            existingCatalogMap.set(selMatch.masterItemId, i);
+          } else {
+            customItems.push(i);
+          }
+        }
       });
 
       const filtered = selected.filter(sel => (sel.qty || 0) > 0);
-      if (filtered.length === 0) {
+      if (filtered.length === 0 && selected.length > 0) {
         toast.error("No items with quantity selected. Add quantity > 0 to include items.");
         return prev;
       }
 
       const updatedCatalogItems: LineItem[] = filtered.map(sel => {
-        const existing = existingCatalogMap.get(sel.masterItemId);
+        const existing = existingCatalogMap.get(sel.masterItemId) ||
+          existingCatalogMap.get(sel.description.trim().toLowerCase());
+
         const qty = sel.qty;
         const wpu = sel.weightPerUnit ?? existing?.weightPerUnit ?? null;
         const ppu = sel.piecesPerUnit ?? existing?.piecesPerUnit ?? null;
@@ -133,6 +145,7 @@ export function useQuotation(existingId?: number) {
         if (existing) {
           return {
             ...existing,
+            masterItemId: sel.masterItemId,
             description: sel.description,
             unit: sel.unit,
             rate: sel.rate,

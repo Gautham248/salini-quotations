@@ -7,13 +7,14 @@ import { SquarePlus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { type LineItem } from "@/hooks/use-quotation";
 
 export function QuotationLineItems({
-  lineItems, onAdd, onUpdate, onRemove, onMove, onSaveDraft, onClearDraft, readOnly,
+  lineItems, onAdd, onUpdate, onRemove, onMove, onSyncCatalogItems, onSaveDraft, onClearDraft, readOnly,
 }: {
   lineItems: LineItem[];
   onAdd: (i: LineItem) => void;
   onUpdate: (k: string, f: keyof LineItem, v: string | number | null) => void;
   onRemove: (k: string) => void;
   onMove: (k: string, d: "up" | "down") => void;
+  onSyncCatalogItems?: (items: any[]) => void;
   onSaveDraft?: () => void;
   onClearDraft?: () => void;
   readOnly?: boolean;
@@ -24,25 +25,33 @@ export function QuotationLineItems({
         {!readOnly && (
           <>
             <ItemPicker
+              existingLineItems={lineItems}
               onConfirm={(items) => {
-                items.forEach((i) =>
-                  onAdd({
-                    key: crypto.randomUUID(),
-                    lineNo: lineItems.length + 1,
-                    masterItemId: i.masterItemId,
-                    description: i.description,
-                    unit: i.unit,
-                    rate: i.rate,
-                    gstPercent: i.gstPercent,
-                    qty: i.qty,
-                    netValue: parseFloat((i.qty * i.rate).toFixed(2)),
-                    quoteMode: "quantity",
-                    weightKg: null,
-                    weightPerUnit: i.weightPerUnit,
-                    pieceCount: null,
-                    piecesPerUnit: i.piecesPerUnit,
-                  })
-                );
+                if (onSyncCatalogItems) {
+                  onSyncCatalogItems(items);
+                } else {
+                  items.forEach((i) => {
+                    const calculatedWeight = i.weightPerUnit && i.weightPerUnit > 0 && i.qty > 0
+                      ? parseFloat((i.qty * i.weightPerUnit).toFixed(3))
+                      : null;
+                    onAdd({
+                      key: crypto.randomUUID(),
+                      lineNo: lineItems.length + 1,
+                      masterItemId: i.masterItemId,
+                      description: i.description,
+                      unit: i.unit,
+                      rate: i.rate,
+                      gstPercent: i.gstPercent,
+                      qty: i.qty,
+                      netValue: parseFloat((i.qty * i.rate).toFixed(2)),
+                      quoteMode: "quantity",
+                      weightKg: calculatedWeight,
+                      weightPerUnit: i.weightPerUnit,
+                      pieceCount: i.piecesPerUnit ? Math.round(i.qty * i.piecesPerUnit) : null,
+                      piecesPerUnit: i.piecesPerUnit,
+                    });
+                  });
+                }
               }}
               onSaveDraft={onSaveDraft ?? (() => {})}
               onClearDraft={onClearDraft ?? (() => {})}
@@ -82,8 +91,8 @@ export function QuotationLineItems({
               <TableHead>Description</TableHead>
               <TableHead className="w-16">GST%</TableHead>
               <TableHead className="w-20">Mode</TableHead>
-              <TableHead className="w-28">Qty</TableHead>
-              <TableHead className="w-28">Alt Input</TableHead>
+              <TableHead className="w-24">Qty</TableHead>
+              <TableHead className="w-28">Weight (Kg)</TableHead>
               <TableHead className="w-16">Unit</TableHead>
               <TableHead className="w-24 text-right">Rate</TableHead>
               <TableHead className="w-28 text-right">Net Value</TableHead>
@@ -99,8 +108,8 @@ export function QuotationLineItems({
               </TableRow>
             ) : (
               lineItems.map((item, idx) => {
-                const hasWeight = !readOnly && !!item.weightPerUnit && item.weightPerUnit > 0;
-                const hasPieces = !readOnly && !!item.piecesPerUnit && item.piecesPerUnit > 0;
+                const hasWeight = !!item.weightPerUnit && item.weightPerUnit > 0;
+                const hasPieces = !!item.piecesPerUnit && item.piecesPerUnit > 0;
                 const modeOptions: string[] = ["quantity"];
                 if (hasWeight) modeOptions.push("weight");
                 if (hasPieces) modeOptions.push("pieces");
@@ -144,24 +153,18 @@ export function QuotationLineItems({
                       )}
                     </TableCell>
                     <TableCell>
-                      {item.quoteMode === "weight" ? (
-                        <div className="flex items-center gap-1">
-                          {readOnly ? (
-                            <span className="text-sm">{item.weightKg != null ? `${item.weightKg} Kg` : "-"}</span>
-                          ) : (
-                            <Input type="number" step="0.001" min="0" value={item.weightKg ?? ""} onChange={e => onUpdate(item.key, "weightKg", parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
-                          )}
-                        </div>
-                      ) : item.quoteMode === "pieces" ? (
-                        <div className="flex items-center gap-1">
-                          {readOnly ? (
-                            <span className="text-sm">{item.pieceCount != null ? `${item.pieceCount} pcs` : "-"}</span>
-                          ) : (
-                            <Input type="number" step="1" min="0" value={item.pieceCount ?? ""} onChange={e => onUpdate(item.key, "pieceCount", parseInt(e.target.value) || 0)} className="h-8 text-sm" />
-                          )}
-                        </div>
+                      {readOnly ? (
+                        <span className="text-sm">{item.weightKg != null ? `${item.weightKg} Kg` : "-"}</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          placeholder="Kg"
+                          value={item.weightKg ?? ""}
+                          onChange={e => onUpdate(item.key, "weightKg", e.target.value === "" ? null : parseFloat(e.target.value))}
+                          className="h-8 text-sm w-24"
+                        />
                       )}
                     </TableCell>
                     <TableCell>

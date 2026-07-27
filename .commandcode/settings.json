@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(pnpm:*)",
+      "Shell(node -e const z = require('zod'); console.log(z.z ? 'v4' : 'v3') 2 > /dev/null)",
+      "Shell(node -e import('zod').then(m => console.log(m.z ? 'v4' : 'v3')))",
+      "Shell(node -e  const { z } = require('zod/v4'); const s = z.object({ name: z.string() }); console.log('ok', typeof s.parse); console.log(typeof z.infer);  2 >& 1)",
+      "Shell(node --import tsx -e  import { z } from 'zod/v4'; const s = z.object({ name: z.string() }); console.log('ok', typeof s.parse);  2 >& 1)",
+      "Shell(node --import tsx -e  import { z } from 'zod/v4'; // Test basic schema const s = z.object({ name: z.string().min(1), qty: z.number().min(0), nullable: z.number().nullable(), optional: z.string().optional(), enu: z.enum(['a', 'b', 'c']) }); console.log('parse:', s.parse({ name: 'test', qty: 5, nullable: null, enu: 'a' })); console.log('safeParse:', s.safeParse({ name: '', qty: -1, enu: 'd' }));  2 >& 1)",
+      "Shell(node --import tsx -e  import { z } from 'zod/v4'; const s = z.object({ id: z.number().int().positive().optional(), key: z.string().min(1), qty: z.number().min(0), weightKg: z.number().nullable().optional(), }); // Should pass with nullable being null console.log('1:', s.safeParse({ key: 'k', qty: 0 }).success); // Should pass with nullable as a value console.log('2:', s.safeParse({ key: 'k', qty: 0, weightKg: 5 }).success); // Should pass with nullable as null console.log('3:', s.safeParse({ key: 'k', qty: 0, weightKg: null }).success); // Test type extraction type T = typeof s._type; console.log('has _type:', typeof s);  2 >& 1)",
+      "Shell(node --import tsx -e  import { z } from 'zod/v4'; const s = z.object({ name: z.string() }); // Check how to infer in v4 console.log(Object.keys(z).filter(k => typeof z[k] === 'function').slice(0, 30));  2 >& 1)",
+      "Shell(node --import tsx -e  import { z } from 'zod/v4'; const s = z.object({ name: z.string().min(1) }); // test parsing works for our actual schemas const result = s.safeParse({ name: '' }); console.log('fail:', result.success, result.error?.issues?.length); const result2 = s.safeParse({ name: 'hello' }); console.log('pass:', result2.success, result2.data);  2 >& 1)",
+      "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && node --import tsx -e \" import { z } from 'zod/v4'; // v4 uses z.infer as a type alias, not a value. Let's check: const s = z.object({ name: z.string() }); // Check if there's a runtime `infer` or `_type`: console.log('typeof z.infer:', typeof z.infer); // Actually in v4, z.infer works as both type-level and value level but it's // the classic API we want. Let me just verify our file imports correctly // by trying to parse with the actual schemas we defined: \" 2>&1)",
+      "Shell(npx tsc --noEmit --pretty 2 >& 1)",
+      "Shell(npx vitest run 2 >& 1)",
+      "Shell(node -e const React = require('react'); console.log('React.act:', typeof React.act); 2 >& 1)",
+      "Shell(node -e const m = require.resolve('react'); console.log(m); const React = require(m); console.log(Object.keys(React).filter(k => typeof React[k] === 'function').slice(0, 20)); 2 >& 1)",
+      "Shell(node -e const actutil = require('react-dom/test-utils'); console.log('type:', typeof actutil.act);)",
+      "Shell(NODE_ENV=development node -e const React = require('react'); console.log('React.act:', typeof React.act);)",
+      "Shell(NODE_ENV=development npx vitest run --reporter=verbose src/__tests__/use-quotation.test.ts 2 >& 1)",
+      "Shell(git:*)",
+      "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && git commit -F - <<'EOF' feat: add input validation and comprehensive test suite Add Zod validation schemas for line items, quotation headers, and cart items. Apply validation at all system boundaries: - use-quotation hook: reject empty items, clamp negative values, enforce GST bounds (0-100), guard against NaN/Infinity in user input - API routes: validate customer name on POST, filter invalid line items (empty description, negative/NaN qty/rate) on PUT, guard against non-numeric IDs across all methods - syncCatalogItems: filter out items with qty <= 0 Set up vitest + jsdom + React Testing Library with 73 tests covering validation schemas, calculation utilities, and the use-quotation hook. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
