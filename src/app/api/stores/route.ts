@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveStoreId } from "@/lib/auth-guards";
+import { requireManager } from "@/lib/auth-guards";
 import { requireSuperAdmin } from "@/lib/auth-guards";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
-  await requireSuperAdmin();
+  await requireManager();
   const stores = await db.store.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(stores);
 }

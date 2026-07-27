@@ -34,7 +34,7 @@ export async function GET(
   const s = await requireAuth();
   const { id } = await params;
   const storeId = await resolveStoreId(_req);
-  const isSuperAdmin = s.user.role === "superadmin";
+  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
 
   const q = await getQuotation(parseId(id), storeId, s.user.id, isSuperAdmin);
   return q ? NextResponse.json(q) : NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -50,7 +50,7 @@ export async function PUT(
   if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const storeId = await resolveStoreId(req);
-  const isSuperAdmin = s.user.role === "superadmin";
+  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
   const isAdmin = s.user.role === "admin" || isSuperAdmin;
 
   const ex = await db.quotation.findUnique({
@@ -153,7 +153,7 @@ export async function DELETE(
   if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const storeId = await resolveStoreId(_req);
-  const isSuperAdmin = s.user.role === "superadmin";
+  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
   const isAdmin = s.user.role === "admin" || isSuperAdmin;
 
   const q = await db.quotation.findUnique({ where: { id: idn } });

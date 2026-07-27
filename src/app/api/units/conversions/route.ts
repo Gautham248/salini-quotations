@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth-guards";
+import { requireAdmin } from "@/lib/auth-guards";
 
 export async function GET() {
   await requireAdmin();
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  await requireSuperAdmin();
+  await requireAdmin();
   const b = await req.json();
   const c = await db.unitConversion.create({
     data: { fromUnitId: b.fromUnitId, toUnitId: b.toUnitId, factor: b.factor },
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  await requireSuperAdmin();
+  await requireAdmin();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (id) await db.unitConversion.delete({ where: { id: parseInt(id) } });

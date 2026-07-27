@@ -7,7 +7,7 @@ async function getTargetStoreId(req: NextRequest): Promise<number | null> {
   const { searchParams } = new URL(req.url);
   const storeIdParam = searchParams.get("storeId");
 
-  if (s.user.role === "superadmin" && storeIdParam) {
+  if ((s.user.role === "superadmin" || s.user.role === "manager") && storeIdParam) {
     return parseInt(storeIdParam);
   }
   const resolved = await resolveStoreId(req);

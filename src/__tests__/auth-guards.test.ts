@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-import { resolveStoreId, requireAdmin, requireSuperAdmin, getSession } from "@/lib/auth-guards";
+import { resolveStoreId, requireAdmin, requireSuperAdmin, requireManager, getSession } from "@/lib/auth-guards";
 
 function session(role: string, storeId: number | null, id = 1) {
   return { user: { id, role, storeId, name: "Test", email: "test@test.com" } };
@@ -57,6 +57,12 @@ describe("requireAdmin", () => {
     expect(s.user.role).toBe("superadmin");
   });
 
+  it("accepts manager role", async () => {
+    mocks.mockAuth.mockResolvedValue(session("manager", null));
+    const s = await requireAdmin();
+    expect(s.user.role).toBe("manager");
+  });
+
   it("rejects staff role (redirects)", async () => {
     mocks.mockAuth.mockResolvedValue(session("staff", 5));
     await expect(requireAdmin()).rejects.toThrow("redirect(/quotations)");
@@ -71,6 +77,31 @@ describe("requireAdmin", () => {
     mocks.mockAuth.mockResolvedValue(session("admin", 5));
     const s = await requireAdmin();
     expect(s.user.storeId).toBe(5);
+  });
+});
+
+// ── requireManager ─────────────────────────────────────────────────────────
+describe("requireManager", () => {
+  it("accepts superadmin role", async () => {
+    mocks.mockAuth.mockResolvedValue(session("superadmin", null));
+    const s = await requireManager();
+    expect(s.user.role).toBe("superadmin");
+  });
+
+  it("accepts manager role", async () => {
+    mocks.mockAuth.mockResolvedValue(session("manager", null));
+    const s = await requireManager();
+    expect(s.user.role).toBe("manager");
+  });
+
+  it("rejects admin role (redirects)", async () => {
+    mocks.mockAuth.mockResolvedValue(session("admin", 5));
+    await expect(requireManager()).rejects.toThrow("redirect(/quotations)");
+  });
+
+  it("rejects staff role (redirects)", async () => {
+    mocks.mockAuth.mockResolvedValue(session("staff", 5));
+    await expect(requireManager()).rejects.toThrow("redirect(/quotations)");
   });
 });
 
@@ -197,6 +228,23 @@ describe("resolveStoreId", () => {
         requestWithQuery("storeId=99"),
       );
       expect(result).toBe(99);
+    });
+  });
+
+  // ── manager: same cross-store privileges as superadmin ─────────────────
+  describe("manager role", () => {
+    it("returns ?storeId= query param when present", async () => {
+      mocks.mockAuth.mockResolvedValue(session("manager", null));
+      const result = await resolveStoreId(
+        requestWithQuery("storeId=99"),
+      );
+      expect(result).toBe(99);
+    });
+
+    it("falls back to session storeId when no query param", async () => {
+      mocks.mockAuth.mockResolvedValue(session("manager", null));
+      const result = await resolveStoreId();
+      expect(result).toBeNull();
     });
   });
 });

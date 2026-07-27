@@ -28,10 +28,11 @@ export async function requireAuth(): Promise<SessionWithUser> {
   return s;
 }
 
-// Accepts both "admin" and "superadmin" — superadmin is a strict superset of admin
+// Accepts "admin", "superadmin", and "manager" — manager is a strict superset of admin
 export async function requireAdmin(): Promise<SessionWithUser> {
   const s = await requireAuth();
-  if (s.user.role !== "admin" && s.user.role !== "superadmin") redirect("/quotations");
+  const adminRoles = new Set(["admin", "superadmin", "manager"]);
+  if (!adminRoles.has(s.user.role)) redirect("/quotations");
   return s;
 }
 
@@ -41,10 +42,18 @@ export async function requireSuperAdmin(): Promise<SessionWithUser> {
   return s;
 }
 
+// "manager" or "superadmin" — cross-store privilege without store creation/deletion
+export async function requireManager(): Promise<SessionWithUser> {
+  const s = await requireAuth();
+  const roles = new Set(["superadmin", "manager"]);
+  if (!roles.has(s.user.role)) redirect("/quotations");
+  return s;
+}
+
 /**
  * Single choke point for store-scoping decisions.
  * - admin/staff: always returns their own storeId from the session (NEVER from request input).
- * - superadmin: reads storeId from request query param `?storeId=` or as a fallback from the session.
+ * - superadmin/manager: reads storeId from request query param `?storeId=` or as a fallback from the session.
  * - Returns null only for genuinely cross-store operations (e.g. listing all stores).
  */
 export async function resolveStoreId(request?: Request): Promise<number | null> {
@@ -54,7 +63,7 @@ export async function resolveStoreId(request?: Request): Promise<number | null> 
     return s.user.storeId ?? null;
   }
 
-  if (s.user.role === "superadmin") {
+  if (s.user.role === "superadmin" || s.user.role === "manager") {
     if (request) {
       const { searchParams } = new URL(request.url);
       const param = searchParams.get("storeId");

@@ -37,6 +37,7 @@ const superAdminLinks = [
   { href: "/superadmin/quotations", label: "All Quotations", icon: FileText },
   { href: "/admin/items", label: "Master Items", icon: Package },
   { href: "/admin/units", label: "Units", icon: Ruler },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 const staffLinks = [
@@ -53,7 +54,7 @@ export function Sidebar() {
   const storeId = (session?.user as { storeId?: number | null })?.storeId;
 
   useEffect(() => {
-    if (role === "superadmin") {
+    if (role === "superadmin" || role === "manager") {
       fetch("/api/stores")
         .then(r => r.json())
         .then(setStores)
@@ -62,7 +63,7 @@ export function Sidebar() {
   }, [role]);
 
   const links =
-    role === "superadmin" ? superAdminLinks :
+    role === "superadmin" || role === "manager" ? superAdminLinks :
     role === "admin" ? adminLinks :
     staffLinks;
 
@@ -103,7 +104,7 @@ export function Sidebar() {
       </div>
 
       {/* Superadmin store selector */}
-      {role === "superadmin" && !collapsed && stores.length > 0 && (
+      {(role === "superadmin" || role === "manager") && !collapsed && stores.length > 0 && (
         <div className="px-2 pt-2 pb-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-2.5 py-1">
             Stores

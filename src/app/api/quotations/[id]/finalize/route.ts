@@ -8,7 +8,7 @@ import { generatePdf } from "@/lib/pdf/generate";
 async function handleFinalize(idStr: string, req: NextRequest) {
   const session = await requireAuth();
   const resolvedStoreId = await resolveStoreId(req);
-  const isSuperAdmin = session.user.role === "superadmin";
+  const isSuperAdmin = session.user.role === "superadmin" || session.user.role === "manager";
 
   const idn = parseInt(idStr);
   if (isNaN(idn) || idn <= 0) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth-guards";
+import { requireAdmin } from "@/lib/auth-guards";
 
 export async function GET() {
   await requireAdmin();
@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const s = await requireSuperAdmin();
+  const s = await requireAdmin();
   const b = await req.json();
   const u = await db.unit.create({
     data: { name: b.name, createdById: s.user.id },

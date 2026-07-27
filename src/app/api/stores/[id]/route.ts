@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/auth-guards";
+import { requireManager } from "@/lib/auth-guards";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireSuperAdmin();
+  await requireManager();
   const { id } = await params;
   const store = await db.store.findUnique({
     where: { id: parseInt(id) },
@@ -19,7 +19,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireSuperAdmin();
+  await requireManager();
   const { id } = await params;
   const b = await req.json();
   const store = await db.store.update({
@@ -36,7 +36,7 @@ export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireSuperAdmin();
+  await requireManager();
   const { id } = await params;
   const store = await db.store.findUnique({ where: { id: parseInt(id) } });
   if (!store) return NextResponse.json({ error: "Not found" }, { status: 404 });

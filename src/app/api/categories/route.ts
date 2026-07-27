@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAuth, requireSuperAdmin } from "@/lib/auth-guards";
+import { requireAuth, requireAdmin } from "@/lib/auth-guards";
 
 export async function GET() {
   await requireAuth();
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  await requireSuperAdmin();
+  await requireAdmin();
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
   try {

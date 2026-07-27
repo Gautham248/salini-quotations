@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/auth-guards";
+import { requireAdmin } from "@/lib/auth-guards";
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireSuperAdmin();
+  await requireAdmin();
   const { id } = await params;
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
@@ -25,7 +25,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireSuperAdmin();
+  await requireAdmin();
   const { id } = await params;
   await db.category.delete({ where: { id: parseInt(id) } });
   return NextResponse.json({ ok: true });
