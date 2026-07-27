@@ -4,8 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "24"
-  DATABASE_URL = "libsql://salini-gautham248.aws-ap-south-1.turso.io"
-  TURSO_AUTH_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE3OTI4ODczODQsImlhdCI6MTc4NTExMTM4NSwiaWQiOiIwMTlmYTBjZC1iMDAxLTc4MDYtOTNiYi01M2RiZjUwMjJmY2IiLCJraWQiOiJhN3hMSC1VSXRRWEpnWk96bWJGdHZqVUZ4dnNVUVJjd0FiUkVnMWI2cThBIiwicmlkIjoiNWViMDQzNzEtMTIwNy00YWYzLThhYTAtYzJhNGY5MDk5ZmQ4In0.MoEhxHXQ2c8muL_h7rqnncK8UkeYABtKpThgBI-lZKuT1XmUQJMR2Ju36yPyG2kT_-VZzOhVQJA5p-mNpxY_BA"
 
 [[headers]]
   for = "/api/*"
