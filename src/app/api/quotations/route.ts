@@ -8,7 +8,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(q);
 }
 export async function POST(req: NextRequest) {
-  const s = await requireAuth(); const b = await req.json(); const quotNo = b.quotNo || await nextQuotNo(); const today = new Date(b.quotDate || new Date());
-  const q = await db.quotation.create({ data: { quotNo, refNo: b.refNo || quotNo, quotDate: today, status: "draft", customerName: b.customerName || "New Customer", customerAddress: b.customerAddress || null, customerPlace: b.customerPlace || null, customerGstin: b.customerGstin || null, deliveryTerms: b.deliveryTerms || null, gstNote: b.gstNote || null, validity: b.validity || "LIMITED", paymentTerms: b.paymentTerms || "READY PAYMENT", createdById: s.user.id } });
+  const s = await requireAuth(); const b = await req.json();
+  if (typeof b.customerName !== "string" || !b.customerName.trim()) {
+    return NextResponse.json({ error: "Customer name is required" }, { status: 400 });
+  }
+  const quotNo = b.quotNo || await nextQuotNo(); const today = new Date(b.quotDate || new Date());
+  const q = await db.quotation.create({ data: { quotNo, refNo: b.refNo || quotNo, quotDate: today, status: "draft", customerName: b.customerName, customerAddress: b.customerAddress || null, customerPlace: b.customerPlace || null, customerGstin: b.customerGstin || null, deliveryTerms: b.deliveryTerms || null, gstNote: b.gstNote || null, validity: b.validity || "LIMITED", paymentTerms: b.paymentTerms || "READY PAYMENT", createdById: s.user.id } });
   return NextResponse.json(q, { status: 201 });
 }
