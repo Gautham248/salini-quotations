@@ -57,6 +57,21 @@ model UnitConversion {
   @@unique([fromUnitId, toUnitId])
 }
 
+model Category {
+  id        Int            @id @default(autoincrement())
+  name      String         @unique
+  createdAt DateTime       @default(now())
+  items     ItemCategory[]
+}
+
+model ItemCategory {
+  item       MasterItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId     Int
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  @@id([itemId, categoryId])
+}
+
 model MasterItem {
   id            Int                  @id @default(autoincrement())
   description   String
@@ -64,7 +79,6 @@ model MasterItem {
   unitId        Int
   rate          Float
   gstPercent    Float
-  category      String?
   weightPerUnit Float?
   piecesPerUnit Int?
   isActive      Boolean              @default(true)
@@ -75,6 +89,7 @@ model MasterItem {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   lineItems     QuotationLineItem[]
+  categories    ItemCategory[]
 }
 
 model Quotation {

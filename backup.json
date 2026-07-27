@@ -1,0 +1,348 @@
+{
+  "User": [
+    {
+      "id": 1,
+      "username": "admin",
+      "passwordHash": "$2b$12$sA1zowhnFjstFIghpOKQbuxjn0c6YwlIY/lAZe5H3u4ACAJc58LP2",
+      "role": "admin",
+      "isActive": 1,
+      "forcePasswordChange": 0,
+      "createdAt": "2026-07-26T23:38:08.830+00:00"
+    },
+    {
+      "id": 2,
+      "username": "staff",
+      "passwordHash": "$2b$12$.EfrnvW/N74k03uf6zOR/uZ5XjlwCkISDQ.lKc4l8z6TEcdM12T9C",
+      "role": "staff",
+      "isActive": 1,
+      "forcePasswordChange": 0,
+      "createdAt": "2026-07-26T23:38:08.970+00:00"
+    }
+  ],
+  "Unit": [
+    {
+      "id": 1,
+      "name": "Sqf",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:09.182+00:00"
+    },
+    {
+      "id": 2,
+      "name": "Sqm",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:09.283+00:00"
+    },
+    {
+      "id": 3,
+      "name": "Nos",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:09.385+00:00"
+    },
+    {
+      "id": 4,
+      "name": "Kg",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:09.522+00:00"
+    },
+    {
+      "id": 5,
+      "name": "Ton",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:09.660+00:00"
+    },
+    {
+      "id": 6,
+      "name": "Ltr",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:10.828+00:00"
+    },
+    {
+      "id": 7,
+      "name": "Mtr",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:10.930+00:00"
+    },
+    {
+      "id": 8,
+      "name": "Pcs",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:11.032+00:00"
+    },
+    {
+      "id": 9,
+      "name": "Roll",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:11.134+00:00"
+    },
+    {
+      "id": 10,
+      "name": "Box",
+      "isActive": 1,
+      "createdById": 1,
+      "createdAt": "2026-07-26T23:38:11.267+00:00"
+    }
+  ],
+  "UnitConversion": [
+    {
+      "id": 1,
+      "fromUnitId": 1,
+      "toUnitId": 2,
+      "factor": 0.092903
+    },
+    {
+      "id": 2,
+      "fromUnitId": 2,
+      "toUnitId": 1,
+      "factor": 10.7639
+    },
+    {
+      "id": 3,
+      "fromUnitId": 4,
+      "toUnitId": 5,
+      "factor": 0.001
+    },
+    {
+      "id": 4,
+      "fromUnitId": 5,
+      "toUnitId": 4,
+      "factor": 1000
+    }
+  ],
+  "MasterItem": [
+    {
+      "id": 1,
+      "description": "UPVC SPANISH TILE 17.96\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 1.2,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:12.010+00:00",
+      "updatedAt": "2026-07-26T23:38:12.010+00:00"
+    },
+    {
+      "id": 2,
+      "description": "UPVC SPANISH TILE 16 52\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 1,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:12.149+00:00",
+      "updatedAt": "2026-07-26T23:38:12.149+00:00"
+    },
+    {
+      "id": 3,
+      "description": "UPVC SPANISH TILE 14.37\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.9,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:12.285+00:00",
+      "updatedAt": "2026-07-26T23:38:12.285+00:00"
+    },
+    {
+      "id": 4,
+      "description": "UPVC SPANISH TILE 12.21\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.75,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:12.809+00:00",
+      "updatedAt": "2026-07-26T23:38:12.809+00:00"
+    },
+    {
+      "id": 5,
+      "description": "UPVC SPANISH TILE 10.06\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.65,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:13.405+00:00",
+      "updatedAt": "2026-07-26T23:38:13.405+00:00"
+    },
+    {
+      "id": 6,
+      "description": "UPVC SPANISH TILE 7.90\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.5,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:13.542+00:00",
+      "updatedAt": "2026-07-26T23:38:13.542+00:00"
+    },
+    {
+      "id": 7,
+      "description": "UPVC SPANISH TILE 6.60\" 2.5 MM",
+      "unitId": 1,
+      "rate": 41.53,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.4,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:13.680+00:00",
+      "updatedAt": "2026-07-26T23:38:13.680+00:00"
+    },
+    {
+      "id": 8,
+      "description": "UPVC TOP RIDGES GREY",
+      "unitId": 3,
+      "rate": 635.59,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 3.5,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:13.851+00:00",
+      "updatedAt": "2026-07-26T23:38:13.851+00:00"
+    },
+    {
+      "id": 9,
+      "description": "UPVC TILED RIDGES",
+      "unitId": 3,
+      "rate": 525.42,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 4,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:14.022+00:00",
+      "updatedAt": "2026-07-26T23:38:14.022+00:00"
+    },
+    {
+      "id": 10,
+      "description": "UPVC THREE WAY RIDGE 2.5MM GREY",
+      "unitId": 3,
+      "rate": 737.29,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 4.5,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:14.205+00:00",
+      "updatedAt": "2026-07-26T23:38:14.205+00:00"
+    },
+    {
+      "id": 11,
+      "description": "UPVC HIP END",
+      "unitId": 3,
+      "rate": 550.85,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 3,
+      "piecesPerUnit": null,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:14.378+00:00",
+      "updatedAt": "2026-07-26T23:38:14.378+00:00"
+    },
+    {
+      "id": 12,
+      "description": "UPVC SCREW 55MM",
+      "unitId": 3,
+      "rate": 7.63,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.01,
+      "piecesPerUnit": 100,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:14.552+00:00",
+      "updatedAt": "2026-07-26T23:38:14.552+00:00"
+    },
+    {
+      "id": 13,
+      "description": "UPVC SCREW CAP",
+      "unitId": 3,
+      "rate": 7.63,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.005,
+      "piecesPerUnit": 100,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:15.504+00:00",
+      "updatedAt": "2026-07-26T23:38:15.504+00:00"
+    },
+    {
+      "id": 14,
+      "description": "SDS 10 X 25 ( 1\")",
+      "unitId": 3,
+      "rate": 2.88,
+      "gstPercent": 18,
+      "category": null,
+      "weightPerUnit": 0.02,
+      "piecesPerUnit": 600,
+      "isActive": 1,
+      "createdById": 1,
+      "updatedById": 1,
+      "createdAt": "2026-07-26T23:38:15.677+00:00",
+      "updatedAt": "2026-07-26T23:38:15.677+00:00"
+    }
+  ],
+  "CompanySettings": [
+    {
+      "id": 1,
+      "companyName": "SALINI TRADERS",
+      "subheading": "Pala - Thodupuzha Road, Kanattupura, Pala, Kottayam, Kerala",
+      "phone": "+91 9539066366",
+      "mobile": "+91 9539088488",
+      "email": "salinisteelspala@gmail.com",
+      "gstin": "32AESFS0236G1Z3",
+      "bankDetails": "State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661",
+      "disclaimerText": "Certified that the particulars given above are true and correct.",
+      "loadingNote": "LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA",
+      "updatedAt": "2026-07-26T23:38:09.079+00:00"
+    }
+  ],
+  "QuotSequence": []
+}
