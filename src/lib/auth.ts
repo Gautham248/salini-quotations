@@ -4,10 +4,10 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 
 declare module "next-auth" {
-  interface Session { user: { id: number; role: string; name?: string | null; email?: string | null; image?: string | null; }; }
-  interface User { role: string; }
+  interface Session { user: { id: number; role: string; storeId: number | null; name?: string | null; email?: string | null; image?: string | null; }; }
+  interface User { role: string; storeId: number | null; }
 }
-declare module "next-auth/jwt" { interface JWT { id: number; role: string; } }
+declare module "next-auth/jwt" { interface JWT { id: number; role: string; storeId: number | null; } }
 
 export const authConfig: NextAuthConfig = {
   providers: [Credentials({
@@ -25,7 +25,7 @@ export const authConfig: NextAuthConfig = {
           console.warn(`Auth failed: Invalid password for user '${credentials.username}'.`);
           return null;
         }
-        return { id: String(u.id), name: u.username, role: u.role as string };
+        return { id: String(u.id), name: u.username, role: u.role as string, storeId: u.storeId ?? null };
       } catch (error) {
         console.error("Database or authentication error during authorize:", error);
         return null;
@@ -33,9 +33,20 @@ export const authConfig: NextAuthConfig = {
     }
   })],
   callbacks: {
-    jwt({ token, user }) { if (user) { token.id = Number(user.id); token.role = user.role; } return token; },
+    jwt({ token, user }) {
+      if (user) {
+        token.id = Number(user.id);
+        token.role = user.role;
+        token.storeId = user.storeId;
+      }
+      return token;
+    },
     session({ session, token }) {
-      if (session.user) { (session.user as unknown as Record<string, unknown>).id = token.id; (session.user as unknown as Record<string, unknown>).role = token.role; }
+      if (session.user) {
+        (session.user as unknown as Record<string, unknown>).id = token.id;
+        (session.user as unknown as Record<string, unknown>).role = token.role;
+        (session.user as unknown as Record<string, unknown>).storeId = token.storeId;
+      }
       return session;
     }
   },

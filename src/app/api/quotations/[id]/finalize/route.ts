@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
+import { resolveStoreId } from "@/lib/auth-guards";
 import { computeTotals, amountInWords } from "@/lib/calculations";
 import { generatePdf } from "@/lib/pdf/generate";
 
-async function handleFinalize(idStr: string) {
+async function handleFinalize(idStr: string, req: NextRequest) {
+  const session = await requireAuth();
+  const resolvedStoreId = await resolveStoreId(req);
+  const isSuperAdmin = session.user.role === "superadmin";
+
   const idn = parseInt(idStr);
   if (isNaN(idn) || idn <= 0) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -16,6 +21,12 @@ async function handleFinalize(idStr: string) {
   });
 
   if (!q) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Store-scoping: quotation must belong to resolved store
+  if (!isSuperAdmin && resolvedStoreId !== null && q.storeId !== resolvedStoreId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   if (q.lineItems.length === 0) {
     return NextResponse.json(
       { error: "At least one line item is required to generate PDF" },
@@ -41,7 +52,9 @@ async function handleFinalize(idStr: string) {
     include: { lineItems: { orderBy: { lineNo: "asc" } } },
   });
 
-  const settings = await db.companySettings.findFirst();
+  const settings = await db.companySettings.findUnique({
+    where: { storeId: upd.storeId },
+  });
   const pdf = await generatePdf(upd, settings);
 
   return new NextResponse(pdf as unknown as BodyInit, {
@@ -53,19 +66,17 @@ async function handleFinalize(idStr: string) {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireAuth();
   const { id } = await params;
-  return handleFinalize(id);
+  return handleFinalize(id, req);
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireAuth();
   const { id } = await params;
-  return handleFinalize(id);
+  return handleFinalize(id, req);
 }

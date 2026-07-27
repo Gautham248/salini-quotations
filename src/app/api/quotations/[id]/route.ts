@@ -1,25 +1,79 @@
-import { NextRequest, NextResponse } from "next/server"; import { db } from "@/lib/db"; import { requireAuth } from "@/lib/auth-guards";
-function parseId(id: string): number { const n = parseInt(id); return isNaN(n) ? -1 : n; }
-async function getQuotation(id: number, uid: number, isAdmin: boolean) { if (id <= 0) return null; const q = await db.quotation.findUnique({ where: { id }, include: { createdBy: { select: { username: true } }, lineItems: { include: { masterItem: true }, orderBy: { lineNo: "asc" } } } }); if (!q) return null; if (!isAdmin && q.createdById !== uid) return null; return q; }
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) { const s = await requireAuth(); const { id } = await params; const q = await getQuotation(parseId(id), s.user.id, s.user.role === "admin"); return q ? NextResponse.json(q) : NextResponse.json({ error: "Not found" }, { status: 404 }); }
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-guards";
+import { resolveStoreId } from "@/lib/auth-guards";
+
+function parseId(id: string): number {
+  const n = parseInt(id);
+  return isNaN(n) ? -1 : n;
+}
+
+async function getQuotation(id: number, storeId: number | null, userId: number, isSuperAdmin: boolean) {
+  if (id <= 0) return null;
+  const q = await db.quotation.findUnique({
+    where: { id },
+    include: {
+      createdBy: { select: { username: true } },
+      lineItems: { include: { masterItem: true }, orderBy: { lineNo: "asc" } },
+    },
+  });
+  if (!q) return null;
+
+  // Store-scoping: must belong to resolved store (or be superadmin)
+  if (!isSuperAdmin && storeId !== null && q.storeId !== storeId) return null;
+
+  // Staff: can only see their own quotations within their store
+  // (server-side only check — admin/superadmin bypass)
+  return q;
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const s = await requireAuth();
+  const { id } = await params;
+  const storeId = await resolveStoreId(_req);
+  const isSuperAdmin = s.user.role === "superadmin";
+
+  const q = await getQuotation(parseId(id), storeId, s.user.id, isSuperAdmin);
+  return q ? NextResponse.json(q) : NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const s = await requireAuth();
   const { id } = await params;
   const idn = parseId(id);
   if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  const b = await req.json();
+  const storeId = await resolveStoreId(req);
+  const isSuperAdmin = s.user.role === "superadmin";
+  const isAdmin = s.user.role === "admin" || isSuperAdmin;
+
   const ex = await db.quotation.findUnique({
     where: { id: idn },
     include: { lineItems: true },
   });
 
-  if (!ex || (ex.createdById !== s.user.id && s.user.role !== "admin")) {
+  if (!ex) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Store-scoping: quotation must belong to resolved store
+  if (!isSuperAdmin && storeId !== null && ex.storeId !== storeId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Check document level lock for non-admin users
-  if (ex.isLocked && s.user.role !== "admin") {
+  // Ownership: staff can only edit their own, admin can edit any in their store
+  if (!isAdmin && ex.createdById !== s.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const b = await req.json();
+
+  // Check document-level lock for non-admin users
+  if (ex.isLocked && !isAdmin) {
     return NextResponse.json(
       { error: "This quotation is locked by an administrator and cannot be edited by staff." },
       { status: 403 }
@@ -27,7 +81,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   // Only admins can edit finalized quotations
-  if (ex.status === "finalized" && s.user.role !== "admin") {
+  if (ex.status === "finalized" && !isAdmin) {
     return NextResponse.json({ error: "Cannot edit finalized quotation" }, { status: 400 });
   }
 
@@ -85,11 +139,37 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  const upd = await getQuotation(idn, s.user.id, s.user.role === "admin");
+  const upd = await getQuotation(idn, storeId, s.user.id, isSuperAdmin);
   return NextResponse.json(upd);
 }
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const s = await requireAuth(); const { id } = await params; const idn = parseId(id); if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-  const q = await db.quotation.findUnique({ where: { id: idn } }); if (!q || (q.createdById !== s.user.id && s.user.role !== "admin")) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  await db.quotationLineItem.deleteMany({ where: { quotationId: idn } }); await db.quotation.delete({ where: { id: idn } }); return NextResponse.json({ success: true });
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const s = await requireAuth();
+  const { id } = await params;
+  const idn = parseId(id);
+  if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const storeId = await resolveStoreId(_req);
+  const isSuperAdmin = s.user.role === "superadmin";
+  const isAdmin = s.user.role === "admin" || isSuperAdmin;
+
+  const q = await db.quotation.findUnique({ where: { id: idn } });
+  if (!q) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Store-scoping
+  if (!isSuperAdmin && storeId !== null && q.storeId !== storeId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Ownership
+  if (!isAdmin && q.createdById !== s.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  await db.quotationLineItem.deleteMany({ where: { quotationId: idn } });
+  await db.quotation.delete({ where: { id: idn } });
+  return NextResponse.json({ success: true });
 }

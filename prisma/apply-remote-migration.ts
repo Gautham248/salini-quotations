@@ -1,6 +1,6 @@
 /**
  * apply-remote-migration.ts
- * Applies the Category/ItemCategory migration to a remote Turso/libsql database.
+ * Multi-tenant conversion for remote Turso/libsql databases.
  * Run with: DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... pnpm tsx prisma/apply-remote-migration.ts
  */
 import { createClient } from "@libsql/client";
@@ -13,121 +13,172 @@ if (!url || !url.startsWith("libsql://")) {
   process.exit(1);
 }
 
+if (process.env.CONFIRM_REMOTE_MIGRATION !== "I_UNDERSTAND") {
+  console.error(`❌ Remote migration requires explicit confirmation.
+
+Target database: ${url}
+
+This script modifies the remote database schema and data. To proceed, set:
+  CONFIRM_REMOTE_MIGRATION=I_UNDERSTAND`);
+  process.exit(1);
+}
+
 const client = createClient({ url: url!, authToken });
 
 async function run() {
   console.log(`🔗 Connecting to remote: ${url}\n`);
 
-  // ── 1. Category table ─────────────────────────────────────────────────────
+  // ── 1. Create Store table ──────────────────────────────────────────────────
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS "Category" (
-      "id"        INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "name"      TEXT    NOT NULL,
+    CREATE TABLE IF NOT EXISTS "Store" (
+      "id"        INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name"      TEXT     NOT NULL,
+      "slug"      TEXT     NOT NULL,
+      "isActive"  BOOLEAN  NOT NULL DEFAULT 1,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  await client.execute(`
-    CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "Category"("name")
-  `);
-  console.log("✓ Category table ready");
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "Store_slug_key" ON "Store"("slug")`);
+  console.log("✓ Store table ready");
 
-  // ── 2. ItemCategory join table ────────────────────────────────────────────
+  // ── 2. Add storeId columns ────────────────────────────────────────────────
+  const userInfo = (await client.execute(`PRAGMA table_info("User")`)).rows;
+  if (!userInfo.some((r: any) => r.name === "storeId")) {
+    await client.execute(`ALTER TABLE "User" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id")`);
+    console.log("✓ Added storeId to User");
+  }
+
+  const csInfo = (await client.execute(`PRAGMA table_info("CompanySettings")`)).rows;
+  if (!csInfo.some((r: any) => r.name === "storeId")) {
+    await client.execute(`ALTER TABLE "CompanySettings" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id")`);
+    console.log("✓ Added storeId to CompanySettings");
+  }
+
+  const quotInfo = (await client.execute(`PRAGMA table_info("Quotation")`)).rows;
+  if (!quotInfo.some((r: any) => r.name === "storeId")) {
+    await client.execute(`ALTER TABLE "Quotation" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id")`);
+    console.log("✓ Added storeId to Quotation");
+  }
+
+  // ── 3. Create ItemStoreRate + StoreQuotSequence ────────────────────────────
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS "ItemCategory" (
-      "itemId"     INTEGER NOT NULL,
-      "categoryId" INTEGER NOT NULL,
-      PRIMARY KEY ("itemId", "categoryId"),
-      FOREIGN KEY ("itemId")     REFERENCES "MasterItem"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      FOREIGN KEY ("categoryId") REFERENCES "Category"("id")   ON DELETE CASCADE ON UPDATE CASCADE
+    CREATE TABLE IF NOT EXISTS "ItemStoreRate" (
+      "id"           INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "masterItemId" INTEGER  NOT NULL,
+      "storeId"      INTEGER  NOT NULL,
+      "rate"         REAL     NOT NULL,
+      "updatedAt"    DATETIME NOT NULL,
+      FOREIGN KEY ("masterItemId") REFERENCES "MasterItem"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("storeId")      REFERENCES "Store"("id")      ON DELETE CASCADE ON UPDATE CASCADE
     )
   `);
-  console.log("✓ ItemCategory table ready");
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "ItemStoreRate_masterItemId_storeId_key" ON "ItemStoreRate"("masterItemId", "storeId")`);
+  console.log("✓ ItemStoreRate table ready");
 
-  // ── 3. Migrate existing category strings ─────────────────────────────────
-  const tableInfo = await client.execute(`PRAGMA table_info("MasterItem")`);
-  const hasCategoryCol = tableInfo.rows.some(
-    (r) => (r as unknown as { name: string }).name === "category"
-  );
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS "StoreQuotSequence" (
+      "id"      INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "storeId" INTEGER NOT NULL,
+      FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "StoreQuotSequence_storeId_key" ON "StoreQuotSequence"("storeId")`);
 
-  if (hasCategoryCol) {
-    const items = await client.execute(
-      `SELECT id, category FROM "MasterItem" WHERE category IS NOT NULL AND category != ''`
-    );
-    console.log(`\n📦 Found ${items.rows.length} items with category strings`);
+  const sqsInfo = (await client.execute(`PRAGMA table_info("StoreQuotSequence")`)).rows;
+  if (!sqsInfo.some((r: any) => r.name === "lastNumber")) {
+    await client.execute(`ALTER TABLE "StoreQuotSequence" ADD COLUMN "lastNumber" INTEGER NOT NULL DEFAULT 0`);
+    console.log("✓ Added lastNumber to StoreQuotSequence");
+  }
+  console.log("✓ StoreQuotSequence table ready");
 
-    const categoryMap = new Map<string, number>();
-    for (const row of items.rows) {
-      const r = row as unknown as { id: number; category: string | null };
-      if (!r.category?.trim()) continue;
-      const catName = r.category.trim();
-      if (!categoryMap.has(catName)) {
-        await client.execute({ sql: `INSERT OR IGNORE INTO "Category" ("name") VALUES (?)`, args: [catName] });
-        const catRow = await client.execute({ sql: `SELECT id FROM "Category" WHERE name = ?`, args: [catName] });
-        const catId = (catRow.rows[0] as unknown as { id: number }).id;
-        categoryMap.set(catName, catId);
-        console.log(`  ✓ Created category: "${catName}" (id=${catId})`);
+  // ── 4. Fix Quotation quotNo index ─────────────────────────────────────────
+  const indices: any[] = (await client.execute(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='Quotation'`)).rows;
+  const oldUniqueIdx = indices.find((i: any) => i.name.includes("quotNo") && !i.name.includes("storeId"));
+  if (oldUniqueIdx) {
+    await client.execute(`DROP INDEX "${oldUniqueIdx.name}"`);
+    console.log(`✓ Dropped old global quotNo index: ${oldUniqueIdx.name}`);
+  }
+  try {
+    await client.execute(`CREATE UNIQUE INDEX "Quotation_storeId_quotNo_key" ON "Quotation"("storeId", "quotNo")`);
+    console.log("✓ Created per-store quotNo unique index");
+  } catch (e: any) {
+    if (!e.message?.includes("already exists")) throw e;
+  }
+
+  // ── 5. Drop deprecated QuotSequence ───────────────────────────────────────
+  await client.execute(`DROP TABLE IF EXISTS "QuotSequence"`);
+  console.log("✓ Dropped deprecated QuotSequence table");
+
+  // ── 6. Data backfill ──────────────────────────────────────────────────────
+  const dupes = (await client.execute(
+    `SELECT "quotNo", COUNT(*) as cnt FROM "Quotation" GROUP BY "quotNo" HAVING cnt > 1`
+  )).rows;
+  if (dupes.length > 0) {
+    console.warn(`\n⚠️  Found ${dupes.length} duplicate quotNo values:`);
+    for (const d of dupes as any[]) console.warn(`   quotNo="${d.quotNo}" appears ${d.cnt} times`);
+    for (const d of dupes as any[]) {
+      const rows: any[] = (await client.execute({
+        sql: `SELECT id, quotNo FROM "Quotation" WHERE quotNo = ? ORDER BY id ASC`,
+        args: [d.quotNo],
+      })).rows;
+      for (let i = 1; i < rows.length; i++) {
+        const suffix = String.fromCharCode(96 + i);
+        await client.execute({
+          sql: `UPDATE "Quotation" SET quotNo = ? WHERE id = ?`,
+          args: [`${rows[i].quotNo}-${suffix}`, rows[i].id],
+        });
+        console.log(`   ✓ Reassigned quotNo="${rows[i].quotNo}-${suffix}" for row id=${rows[i].id}`);
       }
-      await client.execute({
-        sql: `INSERT OR IGNORE INTO "ItemCategory" ("itemId", "categoryId") VALUES (?, ?)`,
-        args: [r.id, categoryMap.get(catName)!],
-      });
     }
-
-    // ── 4. Rebuild MasterItem without category column ─────────────────────
-    console.log("\n🔧 Rebuilding MasterItem to drop legacy category column...");
-    // Turso supports multi-statement execution
-    await client.executeMultiple(`
-      PRAGMA foreign_keys = OFF;
-
-      CREATE TABLE "_MasterItem_new" (
-        "id"            INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "description"   TEXT     NOT NULL,
-        "unitId"        INTEGER  NOT NULL,
-        "rate"          REAL     NOT NULL,
-        "gstPercent"    REAL     NOT NULL,
-        "weightPerUnit" REAL,
-        "piecesPerUnit" INTEGER,
-        "isActive"      BOOLEAN  NOT NULL DEFAULT 1,
-        "createdById"   INTEGER  NOT NULL,
-        "updatedById"   INTEGER  NOT NULL,
-        "createdAt"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt"     DATETIME NOT NULL,
-        FOREIGN KEY ("unitId")      REFERENCES "Unit"("id")  ON UPDATE CASCADE,
-        FOREIGN KEY ("createdById") REFERENCES "User"("id")  ON UPDATE CASCADE,
-        FOREIGN KEY ("updatedById") REFERENCES "User"("id")  ON UPDATE CASCADE
-      );
-
-      INSERT INTO "_MasterItem_new"
-        ("id","description","unitId","rate","gstPercent","weightPerUnit","piecesPerUnit","isActive","createdById","updatedById","createdAt","updatedAt")
-      SELECT
-        "id","description","unitId","rate","gstPercent","weightPerUnit","piecesPerUnit","isActive","createdById","updatedById","createdAt","updatedAt"
-      FROM "MasterItem";
-
-      DROP TABLE "MasterItem";
-      ALTER TABLE "_MasterItem_new" RENAME TO "MasterItem";
-
-      PRAGMA foreign_keys = ON;
-    `);
-    console.log("✓ MasterItem rebuilt without category column");
   } else {
-    console.log("ℹ  category column already removed or never existed — skipping rebuild");
+    console.log("✓ No duplicate quotNo values found");
   }
 
-  // ── 5. Add isLocked column to Quotation table ─────────────────────────────
-  const quotationInfo = await client.execute(`PRAGMA table_info("Quotation")`);
-  const hasIsLockedCol = quotationInfo.rows.some(
-    (r) => (r as unknown as { name: string }).name === "isLocked"
-  );
+  const csRow = (await client.execute(`SELECT * FROM "CompanySettings" LIMIT 1`)).rows[0] as any;
+  const companyName = csRow?.companyName || "SALINI TRADERS";
 
-  if (!hasIsLockedCol) {
-    console.log("\n🔧 Adding isLocked column to Quotation table...");
-    await client.execute(`ALTER TABLE "Quotation" ADD COLUMN "isLocked" BOOLEAN NOT NULL DEFAULT 0`);
-    console.log("✓ isLocked column added to Quotation table");
-  } else {
-    console.log("ℹ  isLocked column already exists on Quotation table");
+  const existingStore = (await client.execute(`SELECT id FROM "Store" WHERE id = 1`)).rows;
+  if (existingStore.length === 0) {
+    await client.execute({
+      sql: `INSERT INTO "Store" ("id", "name", "slug", "isActive") VALUES (1, ?, 'salini-pala', 1)`,
+      args: [companyName],
+    });
+    console.log(`✓ Created default Store: "${companyName}"`);
   }
 
-  console.log("\n✅ Remote migration complete!");
+  await client.execute(`UPDATE "CompanySettings" SET "storeId" = 1 WHERE "storeId" IS NULL`);
+  await client.execute(`UPDATE "User" SET "storeId" = 1 WHERE "storeId" IS NULL`);
+  await client.execute(`UPDATE "Quotation" SET "storeId" = 1 WHERE "storeId" IS NULL`);
+  console.log("✓ Backfilled storeId columns");
+
+  await client.execute(`INSERT OR IGNORE INTO "StoreQuotSequence" ("storeId") VALUES (1)`);
+  console.log("✓ Created StoreQuotSequence row for store 1");
+
+  const adminUser = (await client.execute(
+    `SELECT id, username FROM "User" WHERE role = 'admin' AND storeId = 1 LIMIT 1`
+  )).rows[0] as any;
+  if (adminUser) {
+    await client.execute({
+      sql: `UPDATE "User" SET role = 'superadmin', "storeId" = NULL WHERE id = ?`,
+      args: [adminUser.id],
+    });
+    console.log(`✓ Promoted "${adminUser.username}" to superadmin`);
+  }
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "checksum" TEXT NOT NULL,
+      "finished_at" DATETIME,
+      "migration_name" TEXT NOT NULL,
+      "logs" TEXT,
+      "rolled_back_at" DATETIME,
+      "started_at" DATETIME NOT NULL DEFAULT current_timestamp,
+      "applied_steps_count" INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  console.log("\n✅ Remote multi-tenant migration complete!");
   await client.close();
 }
 

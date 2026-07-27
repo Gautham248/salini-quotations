@@ -7,11 +7,27 @@ datasource db {
   provider = "sqlite"
 }
 
+model Store {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users             User[]
+  quotations        Quotation[]
+  settings          CompanySettings?
+  quotSequence      StoreQuotSequence?
+  itemRateOverrides ItemStoreRate[]
+}
+
 model User {
   id                  Int          @id @default(autoincrement())
   username            String       @unique
   passwordHash        String
-  role                String
+  role                String       // "superadmin" | "admin" | "staff"
+  store               Store?       @relation(fields: [storeId], references: [id])
+  storeId             Int?         // null only when role == "superadmin"
   isActive            Boolean      @default(true)
   forcePasswordChange Boolean      @default(false)
   createdAt           DateTime     @default(now())
@@ -23,13 +39,15 @@ model User {
 
 model CompanySettings {
   id             Int      @id @default(autoincrement())
-  companyName    String   @default("SALINI TRADERS")
-  subheading     String   @default("Pala - Thodupuzha Road, Kanattupura, Pala, Kottayam, Kerala")
-  phone          String   @default("+91 9539066366")
-  mobile         String   @default("+91 9539088488")
-  email          String   @default("salinisteelspala@gmail.com")
-  gstin          String   @default("32AESFS0236G1Z3")
-  bankDetails    String   @default("State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661")
+  store          Store    @relation(fields: [storeId], references: [id])
+  storeId        Int      @unique
+  companyName    String
+  subheading     String
+  phone          String
+  mobile         String
+  email          String
+  gstin          String
+  bankDetails    String
   disclaimerText String   @default("Certified that the particulars given above are true and correct.")
   loadingNote    String   @default("LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA")
   updatedAt      DateTime @updatedAt
@@ -77,7 +95,7 @@ model MasterItem {
   description   String
   unit          Unit                 @relation(fields: [unitId], references: [id])
   unitId        Int
-  rate          Float
+  rate          Float                // base/default rate — used when a store has no override
   gstPercent    Float
   weightPerUnit Float?
   piecesPerUnit Int?
@@ -90,11 +108,26 @@ model MasterItem {
   updatedAt     DateTime             @updatedAt
   lineItems     QuotationLineItem[]
   categories    ItemCategory[]
+  storeRates    ItemStoreRate[]
+}
+
+model ItemStoreRate {
+  id           Int        @id @default(autoincrement())
+  masterItem   MasterItem @relation(fields: [masterItemId], references: [id], onDelete: Cascade)
+  masterItemId Int
+  store        Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId      Int
+  rate         Float
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([masterItemId, storeId])
 }
 
 model Quotation {
   id              Int                  @id @default(autoincrement())
-  quotNo          String               @unique
+  store           Store                @relation(fields: [storeId], references: [id])
+  storeId         Int
+  quotNo          String
   refNo           String
   quotDate        DateTime
   status          String
@@ -119,6 +152,8 @@ model Quotation {
   updatedAt       DateTime             @updatedAt
   finalizedAt     DateTime?
   lineItems       QuotationLineItem[]
+
+  @@unique([storeId, quotNo])
 }
 
 model QuotationLineItem {
@@ -140,7 +175,9 @@ model QuotationLineItem {
   isLocked     Boolean     @default(false)
 }
 
-model QuotSequence {
-  id    Int @id @default(autoincrement())
-  dummy Int @unique
+model StoreQuotSequence {
+  id         Int   @id @default(autoincrement())
+  store      Store @relation(fields: [storeId], references: [id])
+  storeId    Int   @unique
+  lastNumber Int   @default(0)
 }

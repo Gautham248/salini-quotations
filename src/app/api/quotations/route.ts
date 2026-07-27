@@ -1,14 +1,53 @@
-import { NextRequest, NextResponse } from "next/server"; import { db } from "@/lib/db"; import { requireAuth } from "@/lib/auth-guards"; import { nextQuotNo } from "@/lib/quot-no";
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-guards";
+import { resolveStoreId } from "@/lib/auth-guards";
+import { nextQuotNo } from "@/lib/quot-no";
+
 export async function GET(req: NextRequest) {
-  const s = await requireAuth(); const { searchParams } = new URL(req.url); const search = searchParams.get("search") || ""; const isAdmin = s.user.role === "admin";
+  const s = await requireAuth();
+  const storeId = await resolveStoreId(req);
+  const { searchParams } = new URL(req.url);
+  const search = searchParams.get("search") || "";
+
   const where: Record<string, unknown> = {};
-  if (!isAdmin) where.createdById = s.user.id;
-  if (search) where.OR = [{ customerName: { contains: search } }, { quotNo: { contains: search } }];
-  const q = await db.quotation.findMany({ where, include: { createdBy: { select: { username: true } }, lineItems: { orderBy: { lineNo: "asc" } } }, orderBy: { updatedAt: "desc" } });
+
+  // Store scoping
+  if (s.user.role === "superadmin") {
+    if (storeId) where.storeId = storeId;
+  } else {
+    // admin/staff: their own store
+    where.storeId = s.user.storeId;
+    // staff: only their own quotations
+    if (s.user.role === "staff") where.createdById = s.user.id;
+  }
+
+  if (search) {
+    where.OR = [
+      { customerName: { contains: search } },
+      { quotNo: { contains: search } },
+    ];
+  }
+
+  const q = await db.quotation.findMany({
+    where,
+    include: {
+      createdBy: { select: { username: true } },
+      lineItems: { orderBy: { lineNo: "asc" } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
   return NextResponse.json(q);
 }
+
 export async function POST(req: NextRequest) {
   const s = await requireAuth();
+  const storeId = await resolveStoreId(req);
+
+  if (!storeId) {
+    return NextResponse.json({ error: "Store context required to create a quotation" }, { status: 400 });
+  }
+
   const b = await req.json();
 
   const customerName =
@@ -16,11 +55,12 @@ export async function POST(req: NextRequest) {
       ? b.customerName.trim()
       : "Draft Customer";
 
-  const quotNo = b.quotNo || (await nextQuotNo());
+  const quotNo = b.quotNo || (await nextQuotNo(storeId));
   const today = new Date(b.quotDate || new Date());
 
   const q = await db.quotation.create({
     data: {
+      storeId,
       quotNo,
       refNo: b.refNo || quotNo,
       quotDate: today,
