@@ -14,11 +14,25 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault();
+    setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const r = await signIn("credentials", { username: fd.get("username") as string, password: fd.get("password") as string, redirect: false });
-    if (r?.error) { toast.error("Invalid credentials"); setLoading(false); return; }
-    router.push(params.get("callbackUrl") || "/quotations"); router.refresh();
+    try {
+      const r = await Promise.race([
+        signIn("credentials", { username: fd.get("username") as string, password: fd.get("password") as string, redirect: false }),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 15000)),
+      ]);
+      if (!r || r.error) {
+        toast.error(r?.error === "CredentialsSignin" ? "Invalid credentials" : r?.error || "Sign in failed");
+        return;
+      }
+      router.push(params.get("callbackUrl") || "/quotations");
+      router.refresh();
+    } catch {
+      toast.error("Unable to reach the server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
