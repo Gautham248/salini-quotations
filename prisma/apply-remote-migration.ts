@@ -113,6 +113,20 @@ async function run() {
     console.log("ℹ  category column already removed or never existed — skipping rebuild");
   }
 
+  // ── 5. Add isLocked column to Quotation table ─────────────────────────────
+  const quotationInfo = await client.execute(`PRAGMA table_info("Quotation")`);
+  const hasIsLockedCol = quotationInfo.rows.some(
+    (r) => (r as unknown as { name: string }).name === "isLocked"
+  );
+
+  if (!hasIsLockedCol) {
+    console.log("\n🔧 Adding isLocked column to Quotation table...");
+    await client.execute(`ALTER TABLE "Quotation" ADD COLUMN "isLocked" BOOLEAN NOT NULL DEFAULT 0`);
+    console.log("✓ isLocked column added to Quotation table");
+  } else {
+    console.log("ℹ  isLocked column already exists on Quotation table");
+  }
+
   console.log("\n✅ Remote migration complete!");
   await client.close();
 }
