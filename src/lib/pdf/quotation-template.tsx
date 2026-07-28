@@ -9,6 +9,7 @@ import {
 import { formatDate } from "@/lib/utils";
 
 const BORDER_COLOR = "#000000";
+const ACCENT = "#1a3a5c";
 
 const styles = StyleSheet.create({
   page: {
@@ -19,7 +20,7 @@ const styles = StyleSheet.create({
   },
   // ── Header ───────────────────────────────────────────────────
   headerCenter: { textAlign: "center", marginBottom: 6 },
-  companyName: { fontSize: 13, fontFamily: "Helvetica-Bold" },
+  companyName: { fontSize: 13, fontFamily: "Helvetica-Bold", color: ACCENT },
   subheading: { fontSize: 9, fontFamily: "Helvetica-Bold", marginTop: 2 },
   contactLine: { fontSize: 7, marginTop: 2 },
   gstin: { fontSize: 8, fontFamily: "Helvetica-Bold", marginTop: 2 },
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 8,
   },
-  metaLabel: { fontFamily: "Helvetica-Bold", width: 48 },
+  metaLabel: { fontFamily: "Helvetica-Bold", width: 65, flexShrink: 0 },
   metaValue: { flex: 1, textAlign: "right" },
   // ── Table ────────────────────────────────────────────────────
   table: { marginBottom: 8 },
@@ -101,7 +102,8 @@ const styles = StyleSheet.create({
   totalsValue: {
     textAlign: "right",
   },
-  // ── Footer ───────────────────────────────────────────────────
+  // ── Seal / signature space ───────────────────────────────────
+  sealSpacer: { height: 55 },
   amountInWords: {
     fontSize: 7,
     fontFamily: "Helvetica-Bold",
@@ -344,6 +346,9 @@ function QuotationPDFDocument({
           <Text>E&amp;OE</Text>
           <Text style={styles.amountInWords}>{q.amountInWords}</Text>
         </View>
+
+        {/* ── Seal / Signature Space ───────────────────────────── */}
+        <View style={styles.sealSpacer} />
 
         {/* ── Signature + Footer ──────────────────────────────── */}
         <View style={styles.footer}>

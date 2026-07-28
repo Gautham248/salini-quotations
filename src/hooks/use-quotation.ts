@@ -22,6 +22,7 @@ function calcNetValue(item: LineItem): number {
 
 export function useQuotation(existingId?: number) {
   const [id, setId] = useState<number | undefined>(existingId);
+  const [quotNo, setQuotNo] = useState<string>("");
   const [header, setHeader] = useState(DH);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [isLocked, setIsLocked] = useState(false);
@@ -61,6 +62,7 @@ export function useQuotation(existingId?: number) {
           });
           setIsLocked(Boolean(d.isLocked));
           setStatus(d.status || "draft");
+          setQuotNo(d.quotNo || "");
           setLineItems(
             d.lineItems.map((item: Record<string, unknown>) => {
               const mi = item.masterItem as {
@@ -159,6 +161,7 @@ export function useQuotation(existingId?: number) {
           if (r.ok) {
             const d = await r.json();
             setId(d.id);
+            setQuotNo(d.quotNo || "");
             window.history.replaceState(null, "", `/quotations/${d.id}/edit`);
             dirtiedRef.current = false;
             setDirty(false);
@@ -338,6 +341,7 @@ export function useQuotation(existingId?: number) {
   const totals = computeTotals(lineItems);
   return {
     id,
+    quotNo,
     header,
     lineItems,
     totals,
