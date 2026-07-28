@@ -67,7 +67,14 @@
       "Shell(python3 -c  import re, zlib with open('/tmp/test-fixed.pdf', 'rb') as f: raw = f.read() pos = 0; decompressed = [] while True: start = raw.find(b'stream\\n', pos) if start == -1: start = raw.find(b'stream\\r\\n', pos) if start == -1: break nl = raw.find(b'\\n', start) if nl == -1: break end = raw.find(b'endstream', nl) if end == -1: pos = start + 6; continue c = raw[nl+1:end].rstrip(b'\\r\\n') try: d = zlib.decompress(c).decode('latin-1', 'ignore') decompressed.append(d) except: pass pos = end + 9 full = '\\n'.join(decompressed) pattern = r'([0-9]+\\.[0-9]+)\\s+([0-9]+\\.[0-9]+)\\s+([0-9]+\\.[0-9]+)\\s+(scn?|SCN?)' colors = {} for m in re.finditer(pattern, full): r, g, b = round(float(m[1]),4), round(float(m[2]),4), round(float(m[3]),4) key = (r, g, b, m[4]) colors[key] = colors.get(key, 0) + 1 print('Fixed PDF colors:') for (r,g,b,op), count in sorted(colors.items()): hex_val = f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}' label = '← NAVY (company name only)' if abs(r-0x1a/255)<0.02 else ('← BLACK' if r<0.01 else '← OTHER') print(f' {op}: {r:.4f} {g:.4f} {b:.4f} ({hex_val}) x{count} {label}')  2 >& 1)",
       "Shell(which:*)",
       "Shell(npx --yes pdf-to-img --version 2 >& 1)",
-      "Shell(pdftoppm:*)"
+      "Shell(pdftoppm:*)",
+      "Shell(which pdftoppm pdfinfo convert 2>/dev/null; dpkg -l | grep -i poppler 2>/dev/null | head -3; which npx 2>/dev/null)",
+      "Shell(npx tsx /tmp/commandcode-1000/-mnt-storage-Projects-LeedsDigital-Projects-Salini-QuotationGenerator-salini-quotation-generator/8d5cabf3-e2a0-43fc-b17b-e73d305c144b/scratchpad/stress-test-pdf.tsx)",
+      "Shell(npx tsx scripts/stress-test-pdf.tsx 2 >& 1)",
+      "Shell(for:*)",
+      "Shell(do:*)",
+      "Shell(done:*)",
+      "Shell(pdfinfo:*)"
     ],
     "deny": [],
     "defaultMode": "default"

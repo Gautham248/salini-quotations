@@ -309,36 +309,38 @@ function QuotationPDFDocument({
             </View>
           ))}
 
-          {/* Totals rows — separate table for proper column alignment */}
-          {[
-            { label: "Sub Total:", value: fmt(q.subTotal) },
-            { label: "CGST:", value: fmt(q.cgst) },
-            { label: "SGST:", value: fmt(q.sgst) },
-            { label: "Round Off:", value: fmt(q.roundOff) },
-            { label: "Net Amount:", value: q.netAmount.toFixed(2), bold: true },
-          ].map((row, i) => (
-            <View style={styles.tableRow} key={`total-${i}`}>
-              <View
-                style={[
-                  styles.cell,
-                  styles.cellLeft,
-                  { flex: 1 },
-                ]}
-              >
-                <Text style={styles.totalsLabel}>{row.label}</Text>
+          {/* Totals rows — wrapped to prevent page-break splitting */}
+          <View wrap={false}>
+            {[
+              { label: "Sub Total:", value: fmt(q.subTotal) },
+              { label: "CGST:", value: fmt(q.cgst) },
+              { label: "SGST:", value: fmt(q.sgst) },
+              { label: "Round Off:", value: fmt(q.roundOff) },
+              { label: "Net Amount:", value: q.netAmount.toFixed(2), bold: true },
+            ].map((row, i) => (
+              <View style={styles.tableRow} key={`total-${i}`}>
+                <View
+                  style={[
+                    styles.cell,
+                    styles.cellLeft,
+                    { flex: 1 },
+                  ]}
+                >
+                  <Text style={styles.totalsLabel}>{row.label}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.cell,
+                    styles.colNet,
+                    { justifyContent: "center", alignItems: "flex-end" },
+                    row.bold ? { fontFamily: "Helvetica-Bold" } : {},
+                  ]}
+                >
+                  <Text>{row.value}</Text>
+                </View>
               </View>
-              <View
-                style={[
-                  styles.cell,
-                  styles.colNet,
-                  { justifyContent: "center", alignItems: "flex-end" },
-                  row.bold ? { fontFamily: "Helvetica-Bold" } : {},
-                ]}
-              >
-                <Text>{row.value}</Text>
-              </View>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
 
         {/* ── Amount in Words ─────────────────────────────────── */}
@@ -350,8 +352,8 @@ function QuotationPDFDocument({
         {/* ── Seal / Signature Space ───────────────────────────── */}
         <View style={styles.sealSpacer} />
 
-        {/* ── Signature + Footer ──────────────────────────────── */}
-        <View style={styles.footer}>
+        {/* ── Signature + Footer — wrapped to keep as a block ─── */}
+        <View style={styles.footer} wrap={false}>
           <View style={styles.signature}>
             <Text>For {cs.companyName}</Text>
             <Text style={styles.signatory}>Authorized Signatory</Text>
