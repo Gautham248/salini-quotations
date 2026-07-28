@@ -10,7 +10,7 @@ export async function GET(
   const { id } = await params;
   const item = await db.masterItem.findUnique({
     where: { id: parseInt(id) },
-    include: { unit: true, categories: { include: { category: true } } },
+    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
   return item ? NextResponse.json(item) : NextResponse.json({ error: "Not found" }, { status: 404 });
 }
@@ -41,7 +41,7 @@ export async function PUT(
         ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
         : undefined,
     },
-    include: { unit: true, categories: { include: { category: true } } },
+    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
   return NextResponse.json(item);
 }

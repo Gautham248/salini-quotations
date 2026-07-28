@@ -76,7 +76,11 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Unit *</Label>
-              <Select value={f.unitId ? String(f.unitId) : ""} onValueChange={v => setF({ ...f, unitId: v ? parseInt(v) : 0 })}>
+              <Select
+                value={f.unitId ? String(f.unitId) : ""}
+                onValueChange={v => setF({ ...f, unitId: v ? parseInt(v) : 0 })}
+                items={Object.fromEntries(units.map(u => [String(u.id), u.name]))}
+              >
                 <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
                 <SelectContent>{units.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}</SelectContent>
               </Select>

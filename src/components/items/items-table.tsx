@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +43,8 @@ interface MasterItem {
   piecesPerUnit: number | null;
   isActive: boolean;
   categories: { category: Category }[];
+  createdBy?: { username: string };
+  updatedBy?: { username: string } | null;
 }
 
 interface Unit {
@@ -50,6 +53,10 @@ interface Unit {
 }
 
 export function ItemsTable() {
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const canEdit = role === "admin" || role === "superadmin" || role === "manager";
+
   const [items, setItems] = useState<MasterItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -151,20 +158,24 @@ export function ItemsTable() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCatMgrOpen(true)}>
-            <Tags className="h-4 w-4 mr-1.5" />
-            Categories
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEdit(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Item
-          </Button>
+          {canEdit && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setCatMgrOpen(true)}>
+                <Tags className="h-4 w-4 mr-1.5" />
+                Categories
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEdit(null);
+                  setFormOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Item
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -179,7 +190,14 @@ export function ItemsTable() {
             className="pl-9"
           />
         </div>
-        <Select value={cf} onValueChange={(v) => setCf(v ?? "all")}>
+        <Select
+          value={cf}
+          onValueChange={(v) => setCf(v ?? "all")}
+          items={{
+            all: "All Categories",
+            ...Object.fromEntries(categories.map(c => [String(c.id), `${c.name} (${c._count.items})`]))
+          }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
@@ -225,13 +243,18 @@ export function ItemsTable() {
               <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Active
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider w-16" />
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Created By
+              </TableHead>
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Updated By
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                   Loading items...
                 </TableCell>
               </TableRow>
@@ -241,17 +264,19 @@ export function ItemsTable() {
                   <p className="text-sm text-muted-foreground">
                     No items found.
                   </p>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="mt-1"
-                    onClick={() => {
-                      setEdit(null);
-                      setFormOpen(true);
-                    }}
-                  >
-                    Add your first item
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="mt-1"
+                      onClick={() => {
+                        setEdit(null);
+                        setFormOpen(true);
+                      }}
+                    >
+                      Add your first item
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -273,12 +298,12 @@ export function ItemsTable() {
                   <TableCell className="text-sm">
                     {i.weightPerUnit != null
                       ? `${i.weightPerUnit} kg`
-                      : "\u2014"}
+                      : "—"}
                   </TableCell>
                   <TableCell>
                     {i.categories.length === 0 ? (
                       <span className="text-xs text-muted-foreground">
-                        \u2014
+                        —
                       </span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
@@ -295,26 +320,40 @@ export function ItemsTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={i.isActive}
-                        onCheckedChange={() => toggle(i)}
-                      />
-                      <span className="text-[12px] text-muted-foreground">
+                    {canEdit ? (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={i.isActive}
+                          onCheckedChange={() => toggle(i)}
+                        />
+                        <span className="text-[12px] text-muted-foreground">
+                          {i.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    ) : (
+                      <Badge variant={i.isActive ? "default" : "secondary"} className="text-[11px]">
                         {i.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </div>
+                      </Badge>
+                    )}
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => openEdit(i)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {i.createdBy?.username || "—"}
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {i.updatedBy?.username || "—"}
+                  </TableCell>
+                  {canEdit && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEdit(i)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
     include: {
       unit: true,
       categories: { include: { category: true } },
+      createdBy: { select: { username: true } },
+      updatedBy: { select: { username: true } },
     },
     orderBy: { description: "asc" },
   });
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
         ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
         : undefined,
     },
-    include: { unit: true, categories: { include: { category: true } } },
+    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
 
   return NextResponse.json(item, { status: 201 });

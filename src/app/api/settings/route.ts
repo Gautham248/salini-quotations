@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-guards";
+import { requireAuth, requireAdmin } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
 
 export async function GET(req: Request) {
-  await requireAdmin();
+  await requireAuth();
   const storeId = await resolveStoreId(req);
   if (!storeId) {
     return Response.json({ error: "Store context required — use ?storeId= to select a store" }, { status: 400 });

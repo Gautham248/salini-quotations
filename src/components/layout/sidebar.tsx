@@ -14,12 +14,9 @@ import {
   Menu,
   Ruler,
   Store,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useCallback } from "react";
-
-interface StoreInfo { id: number; name: string; slug: string; }
+import { useState } from "react";
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -42,25 +39,15 @@ const superAdminLinks = [
 
 const staffLinks = [
   { href: "/quotations", label: "My Quotations", icon: FileText },
+  { href: "/admin/items", label: "Master Items", icon: Package },
 ];
 
 export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [stores, setStores] = useState<StoreInfo[]>([]);
 
   const role = session?.user?.role;
-  const storeId = (session?.user as { storeId?: number | null })?.storeId;
-
-  useEffect(() => {
-    if (role === "superadmin") {
-      fetch("/api/stores")
-        .then(r => r.json())
-        .then(setStores)
-        .catch(() => {});
-    }
-  }, [role]);
 
   const links =
     role === "superadmin" ? superAdminLinks :
@@ -103,30 +90,13 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Superadmin store selector */}
-      {role === "superadmin" && !collapsed && stores.length > 0 && (
-        <div className="px-2 pt-2 pb-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-2.5 py-1">
-            Stores
-          </p>
-          <div className="space-y-0.5">
-            {stores.map((store) => (
-              <Link
-                key={store.id}
-                href={`?storeId=${store.id}`}
-                className="block px-2.5 py-1.5 text-[12px] rounded-md text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
-              >
-                {store.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
         {links.map((l) => {
-          const active = pathname === l.href || pathname.startsWith(l.href + "/");
+          const active =
+            l.href === "/superadmin" || l.href === "/admin" || l.href === "/quotations"
+              ? pathname === l.href
+              : pathname === l.href || pathname.startsWith(l.href + "/");
           return (
             <Link
               key={l.href}

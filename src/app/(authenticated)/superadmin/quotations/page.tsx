@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -14,22 +14,37 @@ import {
 } from "@/components/ui/select";
 import { Eye, Copy, Pencil, Trash2, Plus, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface QS {
   id: number; quotNo: string; quotDate: string; customerName: string;
   status: string; isLocked?: boolean; netAmount: number | null;
+  store?: { name: string };
   createdBy: { username: string };
+  updatedBy?: { username: string } | null;
 }
 
 interface StoreInfo { id: number; name: string; }
 
-export default function SuperAdminQuotationsPage() {
+function QuotationsContent() {
+  const searchParams = useSearchParams();
+  const urlStoreId = searchParams.get("storeId");
+
   const [quotations, setQuotations] = useState<QS[]>([]);
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStoreId, setFilterStoreId] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (urlStoreId) {
+      setFilterStoreId(urlStoreId);
+    } else {
+      setFilterStoreId("all");
+    }
+  }, [urlStoreId]);
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
@@ -58,7 +73,6 @@ export default function SuperAdminQuotationsPage() {
   }
 
   async function del(id: number) {
-    if (!confirm("Delete this quotation permanently?")) return;
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
     if (r.ok) { toast.success("Quotation deleted"); fetchQuotations(); }
     else { toast.error("Failed to delete"); }
@@ -81,7 +95,14 @@ export default function SuperAdminQuotationsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search by customer or quote number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filterStoreId} onValueChange={v => setFilterStoreId(v ?? "all")}>
+        <Select
+          value={filterStoreId}
+          onValueChange={v => setFilterStoreId(v ?? "all")}
+          items={{
+            all: "All Stores",
+            ...Object.fromEntries(stores.map(s => [String(s.id), s.name]))
+          }}
+        >
           <SelectTrigger className="w-40"><SelectValue placeholder="All stores" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stores</SelectItem>
@@ -97,24 +118,28 @@ export default function SuperAdminQuotationsPage() {
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Quote #</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Date</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Customer</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Store</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Amount</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Created By</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Last Edited</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Status</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Loading quotations...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">Loading quotations...</TableCell></TableRow>
             ) : quotations.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12"><p className="text-sm text-muted-foreground">No quotations found.</p></TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-12"><p className="text-sm text-muted-foreground">No quotations found.</p></TableCell></TableRow>
             ) : quotations.map(q => (
               <TableRow key={q.id} className="group">
                 <TableCell className="font-semibold text-sm">{q.quotNo}</TableCell>
                 <TableCell className="text-sm">{new Date(q.quotDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
                 <TableCell className="text-sm font-medium">{q.customerName}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{q.store?.name || "—"}</TableCell>
                 <TableCell className="text-sm tabular-nums">{q.netAmount != null ? `₹${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{q.createdBy?.username || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{q.updatedBy?.username || "—"}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge variant={q.status === "finalized" ? "default" : "secondary"} className="capitalize text-[11px]">{q.status}</Badge>
@@ -126,7 +151,7 @@ export default function SuperAdminQuotationsPage() {
                     <Link href={`/quotations/${q.id}`}><Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="h-3.5 w-3.5" /></Button></Link>
                     <Link href={`/quotations/${q.id}/edit`}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-3.5 w-3.5" /></Button></Link>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicate(q.id)}><Copy className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => del(q.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => setDeleteId(q.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -134,6 +159,22 @@ export default function SuperAdminQuotationsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Quotation"
+        description="This quotation will be permanently deleted. This action cannot be undone."
+        onConfirm={() => { if (deleteId !== null) del(deleteId); }}
+      />
     </div>
+  );
+}
+
+export default function SuperAdminQuotationsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground text-sm">Loading quotations...</div>}>
+      <QuotationsContent />
+    </Suspense>
   );
 }

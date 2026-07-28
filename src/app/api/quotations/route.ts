@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
   const q = await db.quotation.findMany({
     where,
     include: {
+      store: { select: { name: true } },
       createdBy: { select: { username: true } },
+      updatedBy: { select: { username: true } },
       lineItems: { orderBy: { lineNo: "asc" } },
     },
     orderBy: { updatedAt: "desc" },
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
     include: {
       createdBy: { select: { username: true } },
       lineItems: { include: { masterItem: true }, orderBy: { lineNo: "asc" } },
+      updatedBy: { select: { username: true } },
     },
   });
 

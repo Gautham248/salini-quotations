@@ -14,6 +14,7 @@ async function getQuotation(id: number, storeId: number | null, userId: number, 
     where: { id },
     include: {
       createdBy: { select: { username: true } },
+      updatedBy: { select: { username: true } },
       lineItems: { include: { masterItem: true }, orderBy: { lineNo: "asc" } },
     },
   });
@@ -101,6 +102,7 @@ export async function PUT(
       paymentTerms: b.paymentTerms ?? ex.paymentTerms,
       status: b.status ?? ex.status,
       isLocked: b.isLocked !== undefined ? Boolean(b.isLocked) : ex.isLocked,
+      updatedById: s.user.id,
     },
   });
 

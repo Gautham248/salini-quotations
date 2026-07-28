@@ -26,8 +26,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const adminRoles = new Set(["admin", "superadmin", "manager"]);
-  if (pathname.startsWith("/admin") && !adminRoles.has(token.role as string)) {
-    return NextResponse.redirect(new URL("/quotations", request.url));
+  if (pathname.startsWith("/admin")) {
+    // Staff can only access /admin/items (catalog browsing)
+    if (token.role === "staff" && pathname === "/admin/items") {
+      return NextResponse.next();
+    }
+    if (!adminRoles.has(token.role as string)) {
+      return NextResponse.redirect(new URL("/quotations", request.url));
+    }
   }
 
   if (pathname === "/") {

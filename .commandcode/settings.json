@@ -31,7 +31,8 @@
       "Shell(sqlite3:*)",
       "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && for i in 1 2 3; do echo \"Run $i:\"; pnpm tsx scripts/verify-concurrency.ts 2>&1; echo; done)",
       "Shell(rm:*)",
-      "Shell(node -e const bcrypt = require('bcryptjs'); bcrypt.hash('manager123', 12).then(h => console.log(h)) 2 >& 1)"
+      "Shell(node -e const bcrypt = require('bcryptjs'); bcrypt.hash('manager123', 12).then(h => console.log(h)) 2 >& 1)",
+      "Shell(sleep:*)"
     ],
     "deny": [],
     "defaultMode": "default"

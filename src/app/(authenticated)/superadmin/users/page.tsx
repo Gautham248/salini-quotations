@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +22,12 @@ interface User {
 }
 interface StoreInfo { id: number; name: string; }
 
-export default function SuperAdminUsersPage() {
+function UsersContent() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlStoreId = searchParams.get("storeId");
+
   const [users, setUsers] = useState<User[]>([]);
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +38,14 @@ export default function SuperAdminUsersPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("staff");
   const [newUserStoreId, setNewUserStoreId] = useState<string>("");
+
+  useEffect(() => {
+    if (urlStoreId) {
+      setFilterStoreId(urlStoreId);
+    } else {
+      setFilterStoreId("all");
+    }
+  }, [urlStoreId]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -92,7 +105,7 @@ export default function SuperAdminUsersPage() {
   }
 
   function storeName(storeId: number | null) {
-    if (storeId === null) return "\u2014";
+    if (storeId === null) return "—";
     return stores.find(s => s.id === storeId)?.name || `#${storeId}`;
   }
 
@@ -104,7 +117,14 @@ export default function SuperAdminUsersPage() {
           <p className="text-[13px] text-muted-foreground mt-0.5">{users.length} user{users.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="flex gap-2">
-          <Select value={filterStoreId} onValueChange={v => setFilterStoreId(v ?? "all")}>
+          <Select
+            value={filterStoreId}
+            onValueChange={v => setFilterStoreId(v ?? "all")}
+            items={{
+              all: "All Stores",
+              ...Object.fromEntries(stores.map(s => [String(s.id), s.name]))
+            }}
+          >
             <SelectTrigger className="w-40 h-8 text-[13px]">
               <SelectValue placeholder="All stores" />
             </SelectTrigger>
@@ -140,11 +160,16 @@ export default function SuperAdminUsersPage() {
                 <TableCell className="font-medium text-sm">{u.username}</TableCell>
                 <TableCell className="text-sm">{storeName(u.storeId)}</TableCell>
                 <TableCell>
-                  <Select value={u.role} onValueChange={v => roleChange(u, v ?? "staff")}>
-                    <SelectTrigger className="w-28 h-8 text-[13px]"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={u.role}
+                    onValueChange={v => roleChange(u, v ?? "staff")}
+                    items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
+                  >
+                    <SelectTrigger className="w-32 h-8 text-[13px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="superadmin">Super Admin</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                     </SelectContent>
                   </Select>
@@ -172,18 +197,27 @@ export default function SuperAdminUsersPage() {
             <div className="space-y-1"><Label>Username *</Label><Input value={username} onChange={e => setUsername(e.target.value)} required /></div>
             <div className="space-y-1"><Label>Password *</Label><Input type="password" value={password} onChange={e => setPassword(e.target.value)} required /></div>
             <div className="space-y-1"><Label>Role</Label>
-              <Select value={role} onValueChange={v => { setRole(v ?? "staff"); if (v === "superadmin") setNewUserStoreId(""); }}>
+              <Select
+                value={role}
+                onValueChange={v => { setRole(v ?? "staff"); if (v === "superadmin") setNewUserStoreId(""); }}
+                items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="superadmin">Super Admin</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {role !== "superadmin" && (
               <div className="space-y-1"><Label>Store *</Label>
-                <Select value={newUserStoreId} onValueChange={v => setNewUserStoreId(v ?? "")}>
+                <Select
+                  value={newUserStoreId}
+                  onValueChange={v => setNewUserStoreId(v ?? "")}
+                  items={Object.fromEntries(stores.map(s => [String(s.id), s.name]))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select store" /></SelectTrigger>
                   <SelectContent>
                     {stores.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -196,5 +230,13 @@ export default function SuperAdminUsersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function SuperAdminUsersPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground text-sm">Loading users...</div>}>
+      <UsersContent />
+    </Suspense>
   );
 }
