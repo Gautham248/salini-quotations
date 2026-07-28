@@ -21,7 +21,7 @@ export async function PATCH(
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Store-scoping: admin can only modify users in their own store
-  if (s.user.role !== "superadmin" && s.user.role !== "manager" && target.storeId !== s.user.storeId) {
+  if (s.user.role !== "superadmin" && target.storeId !== s.user.storeId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -47,8 +47,8 @@ export async function PATCH(
 
   if (b.action === "update-role") {
     // Admin cannot promote anyone to superadmin
-    if (s.user.role !== "superadmin" && s.user.role !== "manager" && b.role === "superadmin") {
-      return NextResponse.json({ error: "Forbidden: only superadmin/manager can assign superadmin role" }, { status: 403 });
+    if (s.user.role !== "superadmin" && b.role === "superadmin") {
+      return NextResponse.json({ error: "Forbidden: only superadmin can assign superadmin role" }, { status: 403 });
     }
     const upd = await db.user.update({
       where: { id: uid },

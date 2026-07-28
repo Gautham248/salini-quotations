@@ -28,7 +28,7 @@ export async function requireAuth(): Promise<SessionWithUser> {
   return s;
 }
 
-// Accepts "admin", "superadmin", and "manager" — manager is a strict superset of admin
+// Accepts "admin", "manager", and "superadmin" — any of these can access admin routes
 export async function requireAdmin(): Promise<SessionWithUser> {
   const s = await requireAuth();
   const adminRoles = new Set(["admin", "superadmin", "manager"]);
@@ -52,18 +52,20 @@ export async function requireManager(): Promise<SessionWithUser> {
 
 /**
  * Single choke point for store-scoping decisions.
- * - admin/staff: always returns their own storeId from the session (NEVER from request input).
- * - superadmin/manager: reads storeId from request query param `?storeId=` or as a fallback from the session.
+ * - admin/staff/manager: always returns their own storeId from the session
+ *   (NEVER from request input). Each is scoped to a single store.
+ * - superadmin: reads storeId from request query param `?storeId=` or as a
+ *   fallback from the session.
  * - Returns null only for genuinely cross-store operations (e.g. listing all stores).
  */
 export async function resolveStoreId(request?: Request): Promise<number | null> {
   const s = await requireAuth();
 
-  if (s.user.role === "admin" || s.user.role === "staff") {
+  if (s.user.role === "admin" || s.user.role === "staff" || s.user.role === "manager") {
     return s.user.storeId ?? null;
   }
 
-  if (s.user.role === "superadmin" || s.user.role === "manager") {
+  if (s.user.role === "superadmin") {
     if (request) {
       const { searchParams } = new URL(request.url);
       const param = searchParams.get("storeId");

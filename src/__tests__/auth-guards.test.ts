@@ -231,17 +231,18 @@ describe("resolveStoreId", () => {
     });
   });
 
-  // ── manager: same cross-store privileges as superadmin ─────────────────
+  // ── manager: store-scoped like admin, returns session storeId ─────────
   describe("manager role", () => {
-    it("returns ?storeId= query param when present", async () => {
-      mocks.mockAuth.mockResolvedValue(session("manager", null));
+    it("returns session storeId, never reads ?storeId=", async () => {
+      mocks.mockAuth.mockResolvedValue(session("manager", 5));
       const result = await resolveStoreId(
         requestWithQuery("storeId=99"),
       );
-      expect(result).toBe(99);
+      // Manager is store-scoped — must be session (5), not query (99)
+      expect(result).toBe(5);
     });
 
-    it("falls back to session storeId when no query param", async () => {
+    it("returns null when session storeId is null", async () => {
       mocks.mockAuth.mockResolvedValue(session("manager", null));
       const result = await resolveStoreId();
       expect(result).toBeNull();

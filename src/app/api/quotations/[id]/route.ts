@@ -50,8 +50,8 @@ export async function PUT(
   if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const storeId = await resolveStoreId(req);
-  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
-  const isAdmin = s.user.role === "admin" || isSuperAdmin;
+  const isSuperAdmin = s.user.role === "superadmin";
+  const isAdmin = s.user.role === "admin" || s.user.role === "manager" || isSuperAdmin;
 
   const ex = await db.quotation.findUnique({
     where: { id: idn },
@@ -153,8 +153,8 @@ export async function DELETE(
   if (idn <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const storeId = await resolveStoreId(_req);
-  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
-  const isAdmin = s.user.role === "admin" || isSuperAdmin;
+  const isSuperAdmin = s.user.role === "superadmin";
+  const isAdmin = s.user.role === "admin" || s.user.role === "manager" || isSuperAdmin;
 
   const q = await db.quotation.findUnique({ where: { id: idn } });
   if (!q) return NextResponse.json({ error: "Not found" }, { status: 404 });

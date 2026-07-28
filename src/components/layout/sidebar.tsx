@@ -54,7 +54,7 @@ export function Sidebar() {
   const storeId = (session?.user as { storeId?: number | null })?.storeId;
 
   useEffect(() => {
-    if (role === "superadmin" || role === "manager") {
+    if (role === "superadmin") {
       fetch("/api/stores")
         .then(r => r.json())
         .then(setStores)
@@ -63,8 +63,8 @@ export function Sidebar() {
   }, [role]);
 
   const links =
-    role === "superadmin" || role === "manager" ? superAdminLinks :
-    role === "admin" ? adminLinks :
+    role === "superadmin" ? superAdminLinks :
+    role === "admin" || role === "manager" ? adminLinks :
     staffLinks;
 
   return (
@@ -104,7 +104,7 @@ export function Sidebar() {
       </div>
 
       {/* Superadmin store selector */}
-      {(role === "superadmin" || role === "manager") && !collapsed && stores.length > 0 && (
+      {role === "superadmin" && !collapsed && stores.length > 0 && (
         <div className="px-2 pt-2 pb-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 px-2.5 py-1">
             Stores

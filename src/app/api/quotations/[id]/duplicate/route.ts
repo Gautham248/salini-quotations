@@ -24,7 +24,7 @@ export async function POST(
   if (!orig) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Store-scoping: source quotation must belong to resolved store
-  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
+  const isSuperAdmin = s.user.role === "superadmin";
   if (!isSuperAdmin && orig.storeId !== storeId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

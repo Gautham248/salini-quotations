@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = {};
 
   // Store scoping
-  if (s.user.role === "superadmin" || s.user.role === "manager") {
+  if (s.user.role === "superadmin") {
     if (storeId) where.storeId = storeId;
   } else {
     // admin/staff: their own store

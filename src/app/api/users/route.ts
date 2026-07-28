@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   let where: Record<string, unknown> = {};
 
-  if (s.user.role === "superadmin" || s.user.role === "manager") {
+  if (s.user.role === "superadmin") {
     if (filterStoreId) where.storeId = parseInt(filterStoreId);
   } else if (s.user.role === "admin") {
     where.storeId = s.user.storeId;
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
   let storeId: number | null = null;
   let role = b.role || "staff";
 
-  if (s.user.role === "superadmin" || s.user.role === "manager") {
-    // Superadmin/manager can create any role for any store
+  if (s.user.role === "superadmin") {
+    // Superadmin can create any role for any store
     storeId = b.storeId ?? null;
     if (role === "superadmin") storeId = null;
   } else {

@@ -42,7 +42,7 @@ function resolveUserCreate(params: ResolveUserCreateParams): {
   let storeId: number | null = null;
   let role = params.bodyRole || "staff";
 
-  if (params.requesterRole === "superadmin" || params.requesterRole === "manager") {
+  if (params.requesterRole === "superadmin") {
     storeId = params.bodyStoreId ?? null;
     if (role === "superadmin") storeId = null;
   } else {
@@ -73,7 +73,7 @@ function crossStoreGuard(params: CrossStoreCheckParams): {
   status: number;
   error: string;
 } | null {
-  if (params.requesterRole !== "superadmin" && params.requesterRole !== "manager" && params.targetStoreId !== params.requesterStoreId) {
+  if (params.requesterRole !== "superadmin" && params.targetStoreId !== params.requesterStoreId) {
     return { status: 404, error: "Not found" };
   }
   return null;
@@ -88,8 +88,8 @@ function updateRoleGuard(params: UpdateRoleCheckParams): {
   status: number;
   error: string;
 } | null {
-  if (params.requesterRole !== "superadmin" && params.requesterRole !== "manager" && params.targetRole === "superadmin") {
-    return { status: 403, error: "Forbidden: only superadmin/manager can assign superadmin role" };
+  if (params.requesterRole !== "superadmin" && params.targetRole === "superadmin") {
+    return { status: 403, error: "Forbidden: only superadmin can assign superadmin role" };
   }
   return null;
 }
@@ -246,35 +246,33 @@ describe("user creation storeId enforcement", () => {
   });
 
   describe("manager creating users", () => {
-    it("can create a user in any store (cross-store like superadmin)", () => {
+    it("is store-scoped — forced to own store, ignores body storeId", () => {
       const result = resolveUserCreate({
         requesterRole: "manager",
         requesterStoreId: 5,
-        bodyStoreId: 99,
-        bodyRole: "admin",
-      });
-      expect(result.storeId).toBe(99);
-      expect(result.role).toBe("admin");
-    });
-
-    it("can create a superadmin (storeId forced null)", () => {
-      const result = resolveUserCreate({
-        requesterRole: "manager",
-        requesterStoreId: 5,
-        bodyStoreId: 99,
-        bodyRole: "superadmin",
-      });
-      expect(result.storeId).toBeNull();
-      expect(result.role).toBe("superadmin");
-    });
-
-    it("errors when creating staff without storeId", () => {
-      const result = resolveUserCreate({
-        requesterRole: "manager",
-        requesterStoreId: null,
+        bodyStoreId: 99, // ← attacker
         bodyRole: "staff",
       });
-      expect(result.error).toBeDefined();
+      expect(result.storeId).toBe(5);
+    });
+
+    it("defaults invalid role to staff", () => {
+      const result = resolveUserCreate({
+        requesterRole: "manager",
+        requesterStoreId: 5,
+        bodyRole: "superadmin", // ← manager cannot create superadmins
+      });
+      expect(result.role).toBe("staff");
+    });
+
+    it("can create admin in own store", () => {
+      const result = resolveUserCreate({
+        requesterRole: "manager",
+        requesterStoreId: 5,
+        bodyRole: "admin",
+      });
+      expect(result.role).toBe("admin");
+      expect(result.storeId).toBe(5);
     });
   });
 });
@@ -340,22 +338,22 @@ describe("cross-store user PATCH guard", () => {
   });
 
   describe("manager", () => {
-    it("allows PATCH on user in any store", () => {
-      expect(
-        crossStoreGuard({
-          requesterRole: "manager",
-          requesterStoreId: null,
-          targetStoreId: 99,
-        }),
-      ).toBeNull();
+    it("denies PATCH on user in different store", () => {
+      const result = crossStoreGuard({
+        requesterRole: "manager",
+        requesterStoreId: 5,
+        targetStoreId: 99,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(404);
     });
 
-    it("allows PATCH on user with null storeId", () => {
+    it("allows PATCH on user in own store", () => {
       expect(
         crossStoreGuard({
           requesterRole: "manager",
-          requesterStoreId: null,
-          targetStoreId: null,
+          requesterStoreId: 5,
+          targetStoreId: 5,
         }),
       ).toBeNull();
     });
@@ -376,13 +374,13 @@ describe("role promotion guard (admin cannot create superadmin)", () => {
     ).toBeNull();
   });
 
-  it("allows manager to promote anyone to superadmin", () => {
-    expect(
-      updateRoleGuard({
-        requesterRole: "manager",
-        targetRole: "superadmin",
-      }),
-    ).toBeNull();
+  it("denies manager from promoting staff to superadmin", () => {
+    const result = updateRoleGuard({
+      requesterRole: "manager",
+      targetRole: "superadmin",
+    });
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(403);
   });
 
   it("denies admin from promoting staff to superadmin", () => {

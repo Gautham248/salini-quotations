@@ -31,7 +31,9 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const role = session?.user?.role;
 
   useEffect(() => {
     fetch("/api/settings")
@@ -117,21 +119,37 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Company Settings */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base font-semibold">
-            Company Settings
-          </CardTitle>
-          <CardDescription className="text-[13px]">
-            These details appear on every printed quotation.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {fetchLoading ? (
-            <p className="text-sm text-muted-foreground py-4">Loading settings...</p>
-          ) : (
-            <form onSubmit={save} className="space-y-5">
+      {/* Company Settings — store-admin only; superadmin manages per-store from the Stores page */}
+      {role === "superadmin" ? (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-semibold">Company Settings</CardTitle>
+            <CardDescription className="text-[13px]">
+              As superadmin, you manage each store's settings individually.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Go to <Link href="/superadmin/stores" className="underline text-primary">Store Management</Link>{" "}
+              and click <strong>Edit</strong> on a store to modify its company details.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-semibold">
+              Company Settings
+            </CardTitle>
+            <CardDescription className="text-[13px]">
+              These details appear on every printed quotation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {fetchLoading ? (
+              <p className="text-sm text-muted-foreground py-4">Loading settings...</p>
+            ) : (
+              <form onSubmit={save} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Company Name</Label>
@@ -218,6 +236,7 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
