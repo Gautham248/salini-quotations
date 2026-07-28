@@ -25,10 +25,12 @@ function createPrismaClient(): PrismaClient {
   const adapter = new PrismaLibSql(config);
   const client = new PrismaClient({ adapter });
 
-  // Self-healing schema migration check for missing columns on production/remote database
+  // Self-healing schema migration check for missing columns on production/remote database.
+  // Runs synchronously before db is exported — no request handler can execute until
+  // schema integrity is confirmed, eliminating SQLITE_BUSY contention.
   if (!globalForPrisma._schemaEnsured) {
     globalForPrisma._schemaEnsured = true;
-    Promise.resolve().then(async () => {
+    (async () => {
       try {
         // 1. Quotation table check
         const qCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("Quotation")`);
@@ -147,7 +149,7 @@ function createPrismaClient(): PrismaClient {
       } catch (e) {
         console.error("Schema initialization warning:", e);
       }
-    });
+    })();
   }
 
   return client;

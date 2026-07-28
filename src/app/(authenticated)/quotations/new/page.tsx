@@ -153,6 +153,7 @@ export default function NewQuotationPage() {
             lineItems={quote.lineItems}
             totals={quote.totals}
             storeSettings={storeSettings}
+            quotNo={quote.quotNo}
           />
         </div>
       </div>

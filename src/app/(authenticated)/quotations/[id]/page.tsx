@@ -250,6 +250,7 @@ export default function ViewQuotationPage({
             header={header}
             lineItems={lineItems}
             totals={totals}
+            quotNo={q.quotNo as string}
           />
         </div>
       </div>
