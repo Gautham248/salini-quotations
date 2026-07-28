@@ -1,3 +1,23 @@
-import { NextRequest, NextResponse } from "next/server"; import { db } from "@/lib/db"; import { requireAdmin } from "@/lib/auth-guards";
-export async function GET() { await requireAdmin(); const u = await db.unit.findMany({ where: { isActive: true }, include: { conversionsFrom: { include: { toUnit: true } } }, orderBy: { name: "asc" } }); return NextResponse.json(u); }
-export async function POST(req: NextRequest) { const s = await requireAdmin(); const b = await req.json(); const u = await db.unit.create({ data: { name: b.name, createdById: s.user.id }, include: { conversionsFrom: { include: { toUnit: true } } } }); return NextResponse.json(u, { status: 201 }); }
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-guards";
+
+export async function GET() {
+  await requireAdmin();
+  const u = await db.unit.findMany({
+    where: { isActive: true },
+    include: { conversionsFrom: { include: { toUnit: true } } },
+    orderBy: { name: "asc" },
+  });
+  return NextResponse.json(u);
+}
+
+export async function POST(req: NextRequest) {
+  const s = await requireAdmin();
+  const b = await req.json();
+  const u = await db.unit.create({
+    data: { name: b.name, createdById: s.user.id },
+    include: { conversionsFrom: { include: { toUnit: true } } },
+  });
+  return NextResponse.json(u, { status: 201 });
+}

@@ -144,7 +144,7 @@ export default function UnitsPage() {
                         <span className="font-medium text-sm">{u.name}</span>
                         {u.conversionsFrom.length > 0 && (
                           <span className="text-[12px] text-muted-foreground ml-2">
-                            \u2192{" "}
+                            →{" "}
                             {u.conversionsFrom
                               .map((c) => c.toUnit.name)
                               .join(", ")}
@@ -253,6 +253,7 @@ export default function UnitsPage() {
               <Select
                 value={convFromId ? String(convFromId) : ""}
                 onValueChange={(v) => setConvFromId(v ? parseInt(v) : 0)}
+                items={Object.fromEntries(units.map((u) => [String(u.id), u.name]))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
@@ -271,6 +272,7 @@ export default function UnitsPage() {
               <Select
                 value={convToId ? String(convToId) : ""}
                 onValueChange={(v) => setConvToId(v ? parseInt(v) : 0)}
+                items={Object.fromEntries(units.map((u) => [String(u.id), u.name]))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />

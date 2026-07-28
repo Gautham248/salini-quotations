@@ -1,7 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
 
 const prisma = new PrismaClient({ adapter: new PrismaLibSql({ url: process.env.DATABASE_URL || "file:./dev.db" }) });
 
@@ -32,50 +31,105 @@ const items = [
 ];
 
 async function main() {
-  const existing = await prisma.companySettings.findFirst();
-  if (!existing) {
-    const adminHash = await bcrypt.hash("admin123", 12);
-    const staffHash = await bcrypt.hash("staff123", 12);
-
-    const admin = await prisma.user.create({
-      data: { username: "admin", passwordHash: adminHash, role: "admin", forcePasswordChange: false },
-    });
-    await prisma.user.create({
-      data: { username: "staff", passwordHash: staffHash, role: "staff", forcePasswordChange: false },
-    });
-
-    await prisma.companySettings.create({ data: {} });
-
-    const unitMap: Record<string, number> = {};
-    for (const name of units) {
-      const u = await prisma.unit.create({ data: { name, createdById: admin.id } });
-      unitMap[name] = u.id;
-    }
-
-    for (const conv of conversions) {
-      await prisma.unitConversion.create({
-        data: { fromUnitId: unitMap[conv.from], toUnitId: unitMap[conv.to], factor: conv.factor },
-      });
-    }
-
-    for (const item of items) {
-      const { unit, ...rest } = item;
-      await prisma.masterItem.create({
-        data: { ...rest, unitId: unitMap[unit], createdById: admin.id, updatedById: admin.id },
-      });
-    }
-
-    console.log(`
-╔════════════════════════════════╗
-║         SEED COMPLETE          ║
-╠════════════════════════════════╣
-║  Admin:  admin / admin123      ║
-║  Staff:  staff / staff123      ║
-╚════════════════════════════════╝
-`);
-  } else {
+  const existing = await prisma.store.findFirst();
+  if (existing) {
     console.log("Already seeded.");
+    return;
   }
+
+  const superadminHash = await bcrypt.hash("admin123", 12);
+  const adminHash = await bcrypt.hash("admin123", 12);
+  const staffHash = await bcrypt.hash("staff123", 12);
+
+  // Create the default store
+  const store = await prisma.store.create({
+    data: {
+      name: "SALINI TRADERS",
+      slug: "salini-pala",
+    },
+  });
+
+  // Create CompanySettings for the store
+  await prisma.companySettings.create({
+    data: {
+      storeId: store.id,
+      companyName: "SALINI TRADERS",
+      subheading: "Pala - Thodupuzha Road, Kanattupura, Pala, Kottayam, Kerala",
+      phone: "+91 9539066366",
+      mobile: "+91 9539088488",
+      email: "salinisteelspala@gmail.com",
+      gstin: "32AESFS0236G1Z3",
+      bankDetails: "State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661",
+    },
+  });
+
+  // Create StoreQuotSequence for the store
+  await prisma.storeQuotSequence.create({ data: { storeId: store.id } });
+
+  // Create superadmin (no store)
+  await prisma.user.create({
+    data: {
+      username: "superadmin",
+      passwordHash: superadminHash,
+      role: "superadmin",
+      forcePasswordChange: false,
+    },
+  });
+
+  // Create store admin
+  const admin = await prisma.user.create({
+    data: {
+      username: "admin",
+      passwordHash: adminHash,
+      role: "admin",
+      storeId: store.id,
+      forcePasswordChange: false,
+    },
+  });
+
+  // Create staff user
+  await prisma.user.create({
+    data: {
+      username: "staff",
+      passwordHash: staffHash,
+      role: "staff",
+      storeId: store.id,
+      forcePasswordChange: false,
+    },
+  });
+
+  // Create units
+  const unitMap: Record<string, number> = {};
+  for (const name of units) {
+    const u = await prisma.unit.create({ data: { name, createdById: admin.id } });
+    unitMap[name] = u.id;
+  }
+
+  // Create unit conversions
+  for (const conv of conversions) {
+    await prisma.unitConversion.create({
+      data: { fromUnitId: unitMap[conv.from], toUnitId: unitMap[conv.to], factor: conv.factor },
+    });
+  }
+
+  // Create master items
+  for (const item of items) {
+    const { unit, ...rest } = item;
+    await prisma.masterItem.create({
+      data: { ...rest, unitId: unitMap[unit], createdById: admin.id, updatedById: admin.id },
+    });
+  }
+
+  console.log(`
+╔═══════════════════════════════════════╗
+║          SEED COMPLETE                ║
+╠═══════════════════════════════════════╣
+║  Super Admin: superadmin / admin123   ║
+║  Admin:       admin      / admin123   ║
+║  Staff:       staff      / staff123   ║
+║  Store:       salini-pala             ║
+╚═══════════════════════════════════════╝
+`);
 }
 
 main()

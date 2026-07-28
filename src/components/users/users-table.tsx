@@ -248,12 +248,14 @@ export function UsersTable() {
                         value={u.role}
                         onValueChange={(v) => roleChange(u, v ?? "staff")}
                         disabled={Boolean(isSelf)}
+                        items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
                       >
-                        <SelectTrigger className="w-28 h-8 text-[13px]">
+                        <SelectTrigger className="w-32 h-8 text-[13px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="staff">Staff</SelectItem>
                         </SelectContent>
                       </Select>

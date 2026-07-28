@@ -1,11 +1,12 @@
 "use client";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuotation } from "@/hooks/use-quotation";
 import { QuotationHeaderForm } from "@/components/quotations/quotation-header-form";
 import { QuotationLineItems } from "@/components/quotations/quotation-line-items";
 import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
+import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,12 +39,23 @@ export default function EditQuotationPage({
 }) {
   const { id } = use(params);
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
+  const role = session?.user?.role;
+  const isAdmin = role === "admin" || role === "superadmin" || role === "manager";
 
   const [finalizing, setFinalizing] = useState(false);
   const [showDocLockDialog, setShowDocLockDialog] = useState(false);
+  const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
 
   const quote = useQuotation(parseInt(id));
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data && !data.error) setStoreSettings(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const isDocumentLocked = Boolean(quote.isLocked);
   const isReadOnlyForStaff = !isAdmin && isDocumentLocked;
@@ -279,6 +291,7 @@ export default function EditQuotationPage({
             header={quote.header}
             lineItems={quote.lineItems}
             totals={quote.totals}
+            storeSettings={storeSettings}
           />
         </div>
       </div>

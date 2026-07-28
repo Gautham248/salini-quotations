@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Plus, Eye, Pencil, Copy, Trash2, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface QS {
   id: number;
@@ -33,6 +34,7 @@ export default function StaffQuotationsPage() {
   const [q, setQ] = useState<QS[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const fetchQ = useCallback(async () => {
     setLoading(true);
@@ -62,7 +64,6 @@ export default function StaffQuotationsPage() {
   }
 
   async function del(id: number) {
-    if (!confirm("Delete this quotation?")) return;
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
     if (r.ok) {
       toast.success("Quotation deleted");
@@ -216,7 +217,7 @@ export default function StaffQuotationsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 hover:text-destructive"
-                        onClick={() => del(qi.id)}
+                        onClick={() => setDeleteId(qi.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -228,6 +229,14 @@ export default function StaffQuotationsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Quotation"
+        description="This quotation will be permanently deleted. This action cannot be undone."
+        onConfirm={() => { if (deleteId !== null) del(deleteId); }}
+      />
     </div>
   );
 }

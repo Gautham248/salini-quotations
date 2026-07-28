@@ -21,6 +21,8 @@ async function backup() {
     "UnitConversion",
     "MasterItem",
     "CompanySettings",
+    "Quotation",
+    "QuotationLineItem",
     "QuotSequence",
   ];
 

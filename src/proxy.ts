@@ -25,13 +25,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(u);
   }
 
-  if (pathname.startsWith("/admin") && token.role !== "admin") {
-    return NextResponse.redirect(new URL("/quotations", request.url));
+  const adminRoles = new Set(["admin", "superadmin", "manager"]);
+  if (pathname.startsWith("/admin")) {
+    // Staff can only access /admin/items (catalog browsing)
+    if (token.role === "staff" && pathname === "/admin/items") {
+      return NextResponse.next();
+    }
+    if (!adminRoles.has(token.role as string)) {
+      return NextResponse.redirect(new URL("/quotations", request.url));
+    }
   }
 
   if (pathname === "/") {
+    const r = token.role as string;
     return NextResponse.redirect(
-      new URL(token.role === "admin" ? "/admin" : "/quotations", request.url)
+      new URL(r === "admin" ? "/admin" : "/superadmin", request.url)
     );
   }
 

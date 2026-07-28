@@ -6,7 +6,53 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+interface SelectContextValue {
+  registerItem: (value: string, label: React.ReactNode) => void;
+  unregisterItem: (value: string) => void;
+  itemsMap: Map<string, React.ReactNode>;
+}
+
+const SelectItemsContext = React.createContext<SelectContextValue | null>(null);
+
+function Select<Value = any>({
+  children,
+  items: itemsProp,
+  ...props
+}: SelectPrimitive.Root.Props<Value>) {
+  const [itemsMap, setItemsMap] = React.useState<Map<string, React.ReactNode>>(new Map());
+
+  const registerItem = React.useCallback((val: string, label: React.ReactNode) => {
+    setItemsMap((prev) => {
+      if (prev.get(val) === label) return prev;
+      const next = new Map(prev);
+      next.set(val, label);
+      return next;
+    });
+  }, []);
+
+  const unregisterItem = React.useCallback((val: string) => {
+    setItemsMap((prev) => {
+      if (!prev.has(val)) return prev;
+      const next = new Map(prev);
+      next.delete(val);
+      return next;
+    });
+  }, []);
+
+  const mergedItems = React.useMemo(() => {
+    if (itemsProp) return itemsProp;
+    if (itemsMap.size > 0) return Object.fromEntries(itemsMap);
+    return undefined;
+  }, [itemsProp, itemsMap]);
+
+  return (
+    <SelectItemsContext.Provider value={{ registerItem, unregisterItem, itemsMap }}>
+      <SelectPrimitive.Root items={mergedItems} {...props}>
+        {children}
+      </SelectPrimitive.Root>
+    </SelectItemsContext.Provider>
+  );
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -18,11 +64,26 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   )
 }
 
-function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
+function SelectLabel({
+  className,
+  ...props
+}: SelectPrimitive.GroupLabel.Props) {
+  return (
+    <SelectPrimitive.GroupLabel
+      data-slot="select-label"
+      className={cn("px-1.5 py-1 text-xs text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+function SelectValue({ className, children, placeholder, ...props }: SelectPrimitive.Value.Props) {
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
       className={cn("flex flex-1 text-left", className)}
+      placeholder={placeholder}
+      children={children}
       {...props}
     />
   )
@@ -95,27 +156,27 @@ function SelectContent({
   )
 }
 
-function SelectLabel({
-  className,
-  ...props
-}: SelectPrimitive.GroupLabel.Props) {
-  return (
-    <SelectPrimitive.GroupLabel
-      data-slot="select-label"
-      className={cn("px-1.5 py-1 text-xs text-muted-foreground", className)}
-      {...props}
-    />
-  )
-}
-
 function SelectItem({
   className,
   children,
+  value,
   ...props
 }: SelectPrimitive.Item.Props) {
+  const ctx = React.useContext(SelectItemsContext);
+
+  React.useEffect(() => {
+    if (ctx && value !== undefined && value !== null) {
+      ctx.registerItem(String(value), children);
+      return () => {
+        ctx.unregisterItem(String(value));
+      };
+    }
+  }, [ctx, value, children]);
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      value={value}
       className={cn(
         "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
@@ -162,8 +223,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon
-      />
+      <ChevronUpIcon />
     </SelectPrimitive.ScrollUpArrow>
   )
 }
@@ -181,8 +241,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ChevronDownIcon
-      />
+      <ChevronDownIcon />
     </SelectPrimitive.ScrollDownArrow>
   )
 }
@@ -199,3 +258,4 @@ export {
   SelectTrigger,
   SelectValue,
 }
+

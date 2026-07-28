@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth, requireAdmin } from "@/lib/auth-guards";
+import { getEffectiveRate } from "@/lib/item-rates";
+import { resolveStoreId } from "@/lib/auth-guards";
 
 export async function GET(req: NextRequest) {
-  await requireAuth(); // staff can now access catalog
+  await requireAuth();
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
   const categoryId = searchParams.get("categoryId") || "";
   const showInactive = searchParams.get("showInactive") === "true";
 
-  // Build fuzzy where: split search tokens, every token must appear in description
+  // Resolve store context for rate resolution
+  const storeId = await resolveStoreId(req);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
 
@@ -33,16 +37,29 @@ export async function GET(req: NextRequest) {
     include: {
       unit: true,
       categories: { include: { category: true } },
+      createdBy: { select: { username: true } },
+      updatedBy: { select: { username: true } },
     },
     orderBy: { description: "asc" },
   });
+
+  // Resolve effective rates if a store context is available
+  let resolvedItems = items;
+  if (storeId) {
+    resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        const effectiveRate = await getEffectiveRate(item.id, storeId);
+        return { ...item, rate: effectiveRate };
+      })
+    );
+  }
 
   const categories = await db.category.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { items: true } } },
   });
 
-  return NextResponse.json({ items, categories });
+  return NextResponse.json({ items: resolvedItems, categories });
 }
 
 export async function POST(req: NextRequest) {
@@ -64,7 +81,7 @@ export async function POST(req: NextRequest) {
         ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
         : undefined,
     },
-    include: { unit: true, categories: { include: { category: true } } },
+    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
 
   return NextResponse.json(item, { status: 201 });

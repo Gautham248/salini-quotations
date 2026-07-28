@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Tags, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Category { id: number; name: string; _count: { items: number } }
 
@@ -19,6 +20,7 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteCat, setDeleteCat] = useState<Category | null>(null);
 
   async function fetchCats() {
     const r = await fetch("/api/categories");
@@ -64,7 +66,6 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
   }
 
   async function remove(cat: Category) {
-    if (!confirm(`Delete category "${cat.name}"? Items will be unlinked but not deleted.`)) return;
     const r = await fetch(`/api/categories/${cat.id}`, { method: "DELETE" });
     if (r.ok) {
       toast.success("Deleted");
@@ -76,6 +77,7 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -123,7 +125,7 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditId(cat.id); setEditName(cat.name); }}>
                     <Pencil className="h-3 w-3" />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => remove(cat)}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteCat(cat)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </>
@@ -133,5 +135,15 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={deleteCat !== null}
+      onOpenChange={() => setDeleteCat(null)}
+      title="Delete Category"
+      description={deleteCat ? `Delete category "${deleteCat.name}"? Items will be unlinked but not deleted.` : ""}
+      confirmLabel="Delete"
+      onConfirm={() => { if (deleteCat) { remove(deleteCat); setDeleteCat(null); } }}
+    />
+  </>
   );
 }

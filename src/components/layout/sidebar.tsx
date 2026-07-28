@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Menu,
   Ruler,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -26,16 +27,32 @@ const adminLinks = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
+const superAdminLinks = [
+  { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/superadmin/stores", label: "Stores", icon: Store },
+  { href: "/superadmin/users", label: "All Users", icon: Users },
+  { href: "/superadmin/quotations", label: "All Quotations", icon: FileText },
+  { href: "/admin/items", label: "Master Items", icon: Package },
+  { href: "/admin/units", label: "Units", icon: Ruler },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+];
+
 const staffLinks = [
   { href: "/quotations", label: "My Quotations", icon: FileText },
+  { href: "/admin/items", label: "Master Items", icon: Package },
 ];
 
 export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  const role = session?.user?.role;
+
   const links =
-    session?.user?.role === "admin" ? adminLinks : staffLinks;
+    role === "superadmin" ? superAdminLinks :
+    role === "admin" || role === "manager" ? adminLinks :
+    staffLinks;
 
   return (
     <aside
@@ -76,7 +93,10 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
         {links.map((l) => {
-          const active = pathname === l.href || pathname.startsWith(l.href + "/");
+          const active =
+            l.href === "/superadmin" || l.href === "/admin" || l.href === "/quotations"
+              ? pathname === l.href
+              : pathname === l.href || pathname.startsWith(l.href + "/");
           return (
             <Link
               key={l.href}

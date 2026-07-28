@@ -9,12 +9,23 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Save, FileDown, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 
 export default function NewQuotationPage() {
   const router = useRouter();
   const [finalizing, setFinalizing] = useState(false);
+  const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
   const quote = useQuotation();
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data && !data.error) setStoreSettings(data);
+      })
+      .catch(() => {});
+  }, []);
 
   async function finalize() {
     if (!quote.header.customerName.trim()) {
@@ -141,6 +152,7 @@ export default function NewQuotationPage() {
             header={quote.header}
             lineItems={quote.lineItems}
             totals={quote.totals}
+            storeSettings={storeSettings}
           />
         </div>
       </div>

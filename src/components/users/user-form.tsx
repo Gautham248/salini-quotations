@@ -6,7 +6,7 @@ export function UserForm({ open, onOpenChange, onSave }: { open: boolean; onOpen
     <form onSubmit={e => { e.preventDefault(); onSave({ username: u, password: p, role: r }); onOpenChange(false); }} className="space-y-4">
       <div className="space-y-2"><Label>Username *</Label><Input value={u} onChange={e => setU(e.target.value)} required /></div>
       <div className="space-y-2"><Label>Password *</Label><Input type="password" value={p} onChange={e => setP(e.target.value)} required /></div>
-      <div className="space-y-2"><Label>Role</Label><Select value={r} onValueChange={v => setR(v ?? "staff")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="staff">Staff</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>
+      <div className="space-y-2"><Label>Role</Label><Select value={r} onValueChange={v => setR(v ?? "staff")} items={{ staff: "Staff", manager: "Manager", admin: "Admin" }}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="staff">Staff</SelectItem><SelectItem value="manager">Manager</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>
       <Button type="submit" className="w-full">Add User</Button>
     </form></DialogContent></Dialog>;
 }

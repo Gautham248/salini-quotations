@@ -1,2 +1,67 @@
-import { NextRequest, NextResponse } from "next/server"; import { db } from "@/lib/db"; import { requireAuth } from "@/lib/auth-guards"; import { nextQuotNo } from "@/lib/quot-no";
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) { const s = await requireAuth(); const { id } = await params; const orig = await db.quotation.findUnique({ where: { id: parseInt(id) }, include: { lineItems: true } }); if (!orig) return NextResponse.json({ error: "Not found" }, { status: 404 }); const nqn = await nextQuotNo(); const dup = await db.quotation.create({ data: { quotNo: nqn, refNo: nqn, quotDate: new Date(), status: "draft", customerName: orig.customerName, customerAddress: orig.customerAddress, customerPlace: orig.customerPlace, customerGstin: orig.customerGstin, deliveryTerms: orig.deliveryTerms, gstNote: orig.gstNote, validity: orig.validity, paymentTerms: orig.paymentTerms, createdById: s.user.id, lineItems: { create: orig.lineItems.map(i => ({ masterItemId: i.masterItemId, lineNo: i.lineNo, description: i.description, unit: i.unit, rate: i.rate, gstPercent: i.gstPercent, qty: i.qty, netValue: i.netValue })) } }, include: { lineItems: true } }); return NextResponse.json(dup, { status: 201 }); }
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-guards";
+import { resolveStoreId } from "@/lib/auth-guards";
+import { nextQuotNo } from "@/lib/quot-no";
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const s = await requireAuth();
+  const { id } = await params;
+  const storeId = await resolveStoreId(_req);
+
+  if (!storeId) {
+    return NextResponse.json({ error: "Store context required" }, { status: 400 });
+  }
+
+  const orig = await db.quotation.findUnique({
+    where: { id: parseInt(id) },
+    include: { lineItems: true },
+  });
+
+  if (!orig) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Store-scoping: source quotation must belong to resolved store
+  const isSuperAdmin = s.user.role === "superadmin";
+  if (!isSuperAdmin && orig.storeId !== storeId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const nqn = await nextQuotNo(storeId);
+
+  const dup = await db.quotation.create({
+    data: {
+      storeId,
+      quotNo: nqn,
+      refNo: nqn,
+      quotDate: new Date(),
+      status: "draft",
+      customerName: orig.customerName,
+      customerAddress: orig.customerAddress,
+      customerPlace: orig.customerPlace,
+      customerGstin: orig.customerGstin,
+      deliveryTerms: orig.deliveryTerms,
+      gstNote: orig.gstNote,
+      validity: orig.validity,
+      paymentTerms: orig.paymentTerms,
+      createdById: s.user.id,
+      lineItems: {
+        create: orig.lineItems.map((i) => ({
+          masterItemId: i.masterItemId,
+          lineNo: i.lineNo,
+          description: i.description,
+          unit: i.unit,
+          rate: i.rate,
+          gstPercent: i.gstPercent,
+          qty: i.qty,
+          netValue: i.netValue,
+        })),
+      },
+    },
+    include: { lineItems: true },
+  });
+
+  return NextResponse.json(dup, { status: 201 });
+}
