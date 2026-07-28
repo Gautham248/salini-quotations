@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "prisma db seed",
+    "db:push:remote": "tsx prisma/push-data-remote.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
