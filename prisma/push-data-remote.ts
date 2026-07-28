@@ -15,7 +15,7 @@ const authToken = process.env.TURSO_AUTH_TOKEN;
 if (!url || !url.startsWith("libsql://")) {
   console.error("\n❌ Error: Please set remote DATABASE_URL (libsql://...) and TURSO_AUTH_TOKEN.");
   console.error("Example:");
-  console.error("  DATABASE_URL=\"libsql://salini-gautham248.aws-ap-south-1.turso.io\" TURSO_AUTH_TOKEN=\"...\" npx tsx prisma/push-data-remote.ts\n");
+  console.error("  DATABASE_URL=\"libsql://your-db.turso.io\" TURSO_AUTH_TOKEN=\"...\" npx tsx prisma/push-data-remote.ts\n");
   process.exit(1);
 }
 
