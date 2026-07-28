@@ -7,54 +7,85 @@
  * DATABASE_URL="libsql://your-db.turso.io" TURSO_AUTH_TOKEN="your-token" npx tsx prisma/push-data-remote.ts
  */
 import { createClient } from "@libsql/client";
-import { db as localDb } from "../src/lib/db";
+import path from "path";
 
-const url = process.env.DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+let remoteUrl = process.env.DATABASE_URL;
+const remoteAuthToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!url || !url.startsWith("libsql://")) {
-  console.error("\n❌ Error: Please set remote DATABASE_URL (libsql://...) and TURSO_AUTH_TOKEN.");
-  console.error("Example:");
-  console.error("  DATABASE_URL=\"libsql://your-db.turso.io\" TURSO_AUTH_TOKEN=\"...\" npx tsx prisma/push-data-remote.ts\n");
+if (!remoteUrl) {
+  console.error("\n❌ Error: Please set remote DATABASE_URL and TURSO_AUTH_TOKEN.");
   process.exit(1);
 }
 
-const remote = createClient({ url, authToken });
+// Convert libsql:// to https:// for HTTP client compatibility if needed
+const httpUrl = remoteUrl.startsWith("libsql://")
+  ? remoteUrl.replace(/^libsql:\/\//, "https://")
+  : remoteUrl;
+
+const localDbPath = path.join(process.cwd(), "dev.db");
+const localClient = createClient({ url: `file:${localDbPath}` });
+const remote = createClient({ url: httpUrl, authToken: remoteAuthToken });
+
+async function execRemote(sql: string) {
+  try {
+    const singleLine = sql.replace(/\s+/g, " ").trim();
+    await remote.execute(singleLine);
+  } catch (err: any) {
+    if (!err.message?.includes("already exists")) {
+      console.warn(`  ⚠️ Warning on SQL: [${sql.slice(0, 40)}...]:`, err.message || err);
+    }
+  }
+}
+
+async function ensureColumn(table: string, column: string, definition: string) {
+  try {
+    const cols = (await remote.execute(`PRAGMA table_info("${table}")`)).rows;
+    if (!cols.some((r: any) => r.name === column)) {
+      console.log(`  + Adding missing column "${column}" to table "${table}"...`);
+      await remote.execute(`ALTER TABLE "${table}" ADD COLUMN "${column}" ${definition}`);
+    }
+  } catch (e: any) {
+    console.warn(`  ⚠️ ensureColumn failed for ${table}.${column}:`, e.message || e);
+  }
+}
 
 async function syncToRemote() {
-  console.log(`🔗 Connecting to remote Turso database: ${url}\n`);
+  console.log(`🔗 Connecting to remote Turso database: ${remoteUrl}\n`);
 
-  // 1. Ensure Schema Tables Exist on Remote
-  console.log("📦 Creating remote schema tables...");
-  await remote.execute(`
+  console.log("📦 Provisioning remote schema and column migrations...");
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "Store" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "name" TEXT NOT NULL,
       "slug" TEXT NOT NULL,
       "isActive" BOOLEAN NOT NULL DEFAULT 1,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    )
   `);
-  await remote.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "Store_slug_key" ON "Store"("slug");`);
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "Store_slug_key" ON "Store"("slug")`);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "User" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "username" TEXT NOT NULL,
       "passwordHash" TEXT NOT NULL,
       "role" TEXT NOT NULL,
-      "storeId" INTEGER REFERENCES "Store"("id"),
+      "storeId" INTEGER,
       "isActive" BOOLEAN NOT NULL DEFAULT 1,
       "forcePasswordChange" BOOLEAN NOT NULL DEFAULT 0,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    )
   `);
-  await remote.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username");`);
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username")`);
 
-  await remote.execute(`
+  await ensureColumn("User", "storeId", "INTEGER");
+  await ensureColumn("User", "isActive", "INTEGER DEFAULT 1");
+  await ensureColumn("User", "forcePasswordChange", "INTEGER DEFAULT 0");
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "CompanySettings" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "storeId" INTEGER NOT NULL UNIQUE REFERENCES "Store"("id"),
+      "storeId" INTEGER,
       "companyName" TEXT NOT NULL,
       "subheading" TEXT NOT NULL,
       "phone" TEXT NOT NULL,
@@ -65,77 +96,83 @@ async function syncToRemote() {
       "disclaimerText" TEXT NOT NULL DEFAULT 'Certified that the particulars given above are true and correct.',
       "loadingNote" TEXT NOT NULL DEFAULT 'LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA',
       "updatedAt" DATETIME NOT NULL
-    );
+    )
   `);
 
-  await remote.execute(`
+  await ensureColumn("CompanySettings", "storeId", "INTEGER");
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "Unit" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "name" TEXT NOT NULL UNIQUE,
       "isActive" BOOLEAN NOT NULL DEFAULT 1,
-      "createdById" INTEGER NOT NULL REFERENCES "User"("id"),
+      "createdById" INTEGER NOT NULL,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    )
   `);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "UnitConversion" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "fromUnitId" INTEGER NOT NULL REFERENCES "Unit"("id"),
-      "toUnitId" INTEGER NOT NULL REFERENCES "Unit"("id"),
+      "fromUnitId" INTEGER NOT NULL,
+      "toUnitId" INTEGER NOT NULL,
       "factor" REAL NOT NULL,
       UNIQUE("fromUnitId", "toUnitId")
-    );
+    )
   `);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "Category" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "name" TEXT NOT NULL UNIQUE,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
+    )
   `);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "MasterItem" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "description" TEXT NOT NULL,
-      "unitId" INTEGER NOT NULL REFERENCES "Unit"("id"),
+      "unitId" INTEGER NOT NULL,
       "rate" REAL NOT NULL,
       "gstPercent" REAL NOT NULL,
       "weightPerUnit" REAL,
       "piecesPerUnit" INTEGER,
       "isActive" BOOLEAN NOT NULL DEFAULT 1,
-      "createdById" INTEGER NOT NULL REFERENCES "User"("id"),
-      "updatedById" INTEGER NOT NULL REFERENCES "User"("id"),
+      "createdById" INTEGER NOT NULL,
+      "updatedById" INTEGER NOT NULL,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
-    );
+    )
   `);
 
-  await remote.execute(`
+  await ensureColumn("MasterItem", "weightPerUnit", "REAL");
+  await ensureColumn("MasterItem", "piecesPerUnit", "INTEGER");
+  await ensureColumn("MasterItem", "isActive", "INTEGER DEFAULT 1");
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "ItemCategory" (
-      "itemId" INTEGER NOT NULL REFERENCES "MasterItem"("id") ON DELETE CASCADE,
-      "categoryId" INTEGER NOT NULL REFERENCES "Category"("id") ON DELETE CASCADE,
+      "itemId" INTEGER NOT NULL,
+      "categoryId" INTEGER NOT NULL,
       PRIMARY KEY("itemId", "categoryId")
-    );
+    )
   `);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "ItemStoreRate" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "masterItemId" INTEGER NOT NULL REFERENCES "MasterItem"("id") ON DELETE CASCADE,
-      "storeId" INTEGER NOT NULL REFERENCES "Store"("id") ON DELETE CASCADE,
+      "masterItemId" INTEGER NOT NULL,
+      "storeId" INTEGER NOT NULL,
       "rate" REAL NOT NULL,
       "updatedAt" DATETIME NOT NULL,
       UNIQUE("masterItemId", "storeId")
-    );
+    )
   `);
 
-  await remote.execute(`
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "Quotation" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "storeId" INTEGER NOT NULL REFERENCES "Store"("id"),
+      "storeId" INTEGER NOT NULL,
       "quotNo" TEXT NOT NULL,
       "refNo" TEXT NOT NULL,
       "quotDate" DATETIME NOT NULL,
@@ -155,20 +192,31 @@ async function syncToRemote() {
       "netAmount" REAL,
       "amountInWords" TEXT,
       "isLocked" BOOLEAN NOT NULL DEFAULT 0,
-      "createdById" INTEGER NOT NULL REFERENCES "User"("id"),
-      "updatedById" INTEGER REFERENCES "User"("id"),
+      "createdById" INTEGER NOT NULL,
+      "updatedById" INTEGER,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL,
-      "finalizedAt" DATETIME,
-      UNIQUE("storeId", "quotNo")
-    );
+      "finalizedAt" DATETIME
+    )
   `);
 
-  await remote.execute(`
+  await ensureColumn("Quotation", "storeId", "INTEGER");
+  await ensureColumn("Quotation", "isLocked", "INTEGER DEFAULT 0");
+  await ensureColumn("Quotation", "updatedById", "INTEGER");
+  await ensureColumn("Quotation", "finalizedAt", "DATETIME");
+
+  const indices: any[] = (await remote.execute(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='Quotation'`)).rows;
+  const oldUniqueIdx = indices.find((i: any) => i.name.includes("quotNo") && !i.name.includes("storeId"));
+  if (oldUniqueIdx) {
+    await execRemote(`DROP INDEX "${oldUniqueIdx.name}"`);
+  }
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "Quotation_storeId_quotNo_key" ON "Quotation"("storeId", "quotNo")`);
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "QuotationLineItem" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "quotationId" INTEGER NOT NULL REFERENCES "Quotation"("id") ON DELETE CASCADE,
-      "masterItemId" INTEGER REFERENCES "MasterItem"("id"),
+      "quotationId" INTEGER NOT NULL,
+      "masterItemId" INTEGER,
       "lineNo" INTEGER NOT NULL,
       "description" TEXT NOT NULL,
       "unit" TEXT NOT NULL,
@@ -180,33 +228,38 @@ async function syncToRemote() {
       "weightKg" REAL,
       "pieceCount" REAL,
       "isLocked" BOOLEAN NOT NULL DEFAULT 0
-    );
+    )
   `);
 
-  await remote.execute(`
+  await ensureColumn("QuotationLineItem", "quoteMode", "TEXT DEFAULT 'quantity'");
+  await ensureColumn("QuotationLineItem", "weightKg", "REAL");
+  await ensureColumn("QuotationLineItem", "pieceCount", "REAL");
+  await ensureColumn("QuotationLineItem", "isLocked", "INTEGER DEFAULT 0");
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "StoreQuotSequence" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "storeId" INTEGER NOT NULL UNIQUE REFERENCES "Store"("id"),
+      "storeId" INTEGER NOT NULL UNIQUE,
       "lastNumber" INTEGER NOT NULL DEFAULT 0
-    );
+    )
   `);
 
-  console.log("✓ Remote schema structure confirmed.\n");
+  console.log("✓ Remote schema & columns confirmed.\n");
 
   // 2. Fetch local data from dev.db
   console.log("📥 Fetching local data from SQLite (dev.db)...");
-  const stores = await localDb.store.findMany();
-  const users = await localDb.user.findMany();
-  const settings = await localDb.companySettings.findMany();
-  const units = await localDb.unit.findMany();
-  const conversions = await localDb.unitConversion.findMany();
-  const categories = await localDb.category.findMany();
-  const itemCategories = await localDb.itemCategory.findMany();
-  const items = await localDb.masterItem.findMany();
-  const itemStoreRates = await localDb.itemStoreRate.findMany();
-  const quotations = await localDb.quotation.findMany();
-  const lineItems = await localDb.quotationLineItem.findMany();
-  const sequences = await localDb.storeQuotSequence.findMany();
+  const stores = (await localClient.execute(`SELECT * FROM "Store"`)).rows;
+  const users = (await localClient.execute(`SELECT * FROM "User"`)).rows;
+  const settings = (await localClient.execute(`SELECT * FROM "CompanySettings"`)).rows;
+  const units = (await localClient.execute(`SELECT * FROM "Unit"`)).rows;
+  const conversions = (await localClient.execute(`SELECT * FROM "UnitConversion"`)).rows;
+  const categories = (await localClient.execute(`SELECT * FROM "Category"`)).rows;
+  const itemCategories = (await localClient.execute(`SELECT * FROM "ItemCategory"`)).rows;
+  const items = (await localClient.execute(`SELECT * FROM "MasterItem"`)).rows;
+  const itemStoreRates = (await localClient.execute(`SELECT * FROM "ItemStoreRate"`)).rows;
+  const quotations = (await localClient.execute(`SELECT * FROM "Quotation"`)).rows;
+  const lineItems = (await localClient.execute(`SELECT * FROM "QuotationLineItem"`)).rows;
+  const sequences = (await localClient.execute(`SELECT * FROM "StoreQuotSequence"`)).rows;
 
   console.log(`  - Stores: ${stores.length}`);
   console.log(`  - Users: ${users.length}`);
@@ -220,46 +273,41 @@ async function syncToRemote() {
   // 3. Push to Remote
   console.log("🚀 Syncing records to remote Turso database...");
 
-  // Stores
-  for (const s of stores) {
+  for (const s of stores as any[]) {
     await remote.execute({
       sql: `INSERT INTO "Store" (id, name, slug, isActive, createdAt) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET name=excluded.name, slug=excluded.slug, isActive=excluded.isActive;`,
-      args: [s.id, s.name, s.slug, s.isActive ? 1 : 0, s.createdAt.toISOString()],
+      args: [s.id, s.name, s.slug, s.isActive, s.createdAt],
     });
   }
 
-  // Users
-  for (const u of users) {
+  for (const u of users as any[]) {
     await remote.execute({
       sql: `INSERT INTO "User" (id, username, passwordHash, role, storeId, isActive, forcePasswordChange, createdAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET username=excluded.username, role=excluded.role, storeId=excluded.storeId, isActive=excluded.isActive;`,
-      args: [u.id, u.username, u.passwordHash, u.role, u.storeId, u.isActive ? 1 : 0, u.forcePasswordChange ? 1 : 0, u.createdAt.toISOString()],
+            ON CONFLICT(id) DO UPDATE SET username=excluded.username, role=excluded.role, storeId=excluded.storeId, isActive=excluded.isActive, forcePasswordChange=excluded.forcePasswordChange;`,
+      args: [u.id, u.username, u.passwordHash, u.role, u.storeId, u.isActive, u.forcePasswordChange, u.createdAt],
     });
   }
 
-  // CompanySettings
-  for (const cs of settings) {
+  for (const cs of settings as any[]) {
     await remote.execute({
       sql: `INSERT INTO "CompanySettings" (id, storeId, companyName, subheading, phone, mobile, email, gstin, bankDetails, disclaimerText, loadingNote, updatedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET companyName=excluded.companyName, subheading=excluded.subheading, phone=excluded.phone, mobile=excluded.mobile, email=excluded.email, gstin=excluded.gstin, bankDetails=excluded.bankDetails;`,
-      args: [cs.id, cs.storeId, cs.companyName, cs.subheading, cs.phone, cs.mobile, cs.email, cs.gstin, cs.bankDetails, cs.disclaimerText, cs.loadingNote, cs.updatedAt.toISOString()],
+      args: [cs.id, cs.storeId, cs.companyName, cs.subheading, cs.phone, cs.mobile, cs.email, cs.gstin, cs.bankDetails, cs.disclaimerText, cs.loadingNote, cs.updatedAt],
     });
   }
 
-  // Units
-  for (const un of units) {
+  for (const un of units as any[]) {
     await remote.execute({
       sql: `INSERT INTO "Unit" (id, name, isActive, createdById, createdAt) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET name=excluded.name, isActive=excluded.isActive;`,
-      args: [un.id, un.name, un.isActive ? 1 : 0, un.createdById, un.createdAt.toISOString()],
+      args: [un.id, un.name, un.isActive, un.createdById, un.createdAt],
     });
   }
 
-  // UnitConversions
-  for (const uc of conversions) {
+  for (const uc of conversions as any[]) {
     await remote.execute({
       sql: `INSERT INTO "UnitConversion" (id, fromUnitId, toUnitId, factor) VALUES (?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET factor=excluded.factor;`,
@@ -267,27 +315,24 @@ async function syncToRemote() {
     });
   }
 
-  // Categories
-  for (const cat of categories) {
+  for (const cat of categories as any[]) {
     await remote.execute({
       sql: `INSERT INTO "Category" (id, name, createdAt) VALUES (?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET name=excluded.name;`,
-      args: [cat.id, cat.name, cat.createdAt.toISOString()],
+      args: [cat.id, cat.name, cat.createdAt],
     });
   }
 
-  // MasterItems
-  for (const item of items) {
+  for (const item of items as any[]) {
     await remote.execute({
       sql: `INSERT INTO "MasterItem" (id, description, unitId, rate, gstPercent, weightPerUnit, piecesPerUnit, isActive, createdById, updatedById, createdAt, updatedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET description=excluded.description, unitId=excluded.unitId, rate=excluded.rate, gstPercent=excluded.gstPercent;`,
-      args: [item.id, item.description, item.unitId, item.rate, item.gstPercent, item.weightPerUnit, item.piecesPerUnit, item.isActive ? 1 : 0, item.createdById, item.updatedById, item.createdAt.toISOString(), item.updatedAt.toISOString()],
+      args: [item.id, item.description, item.unitId, item.rate, item.gstPercent, item.weightPerUnit, item.piecesPerUnit, item.isActive, item.createdById, item.updatedById, item.createdAt, item.updatedAt],
     });
   }
 
-  // ItemCategory
-  for (const ic of itemCategories) {
+  for (const ic of itemCategories as any[]) {
     await remote.execute({
       sql: `INSERT INTO "ItemCategory" (itemId, categoryId) VALUES (?, ?)
             ON CONFLICT(itemId, categoryId) DO NOTHING;`,
@@ -295,37 +340,33 @@ async function syncToRemote() {
     });
   }
 
-  // ItemStoreRate
-  for (const isr of itemStoreRates) {
+  for (const isr of itemStoreRates as any[]) {
     await remote.execute({
       sql: `INSERT INTO "ItemStoreRate" (id, masterItemId, storeId, rate, updatedAt) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET rate=excluded.rate;`,
-      args: [isr.id, isr.masterItemId, isr.storeId, isr.rate, isr.updatedAt.toISOString()],
+      args: [isr.id, isr.masterItemId, isr.storeId, isr.rate, isr.updatedAt],
     });
   }
 
-  // Quotations
-  for (const q of quotations) {
+  for (const q of quotations as any[]) {
     await remote.execute({
       sql: `INSERT INTO "Quotation" (id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, isLocked, createdById, updatedById, createdAt, updatedAt, finalizedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET status=excluded.status, netAmount=excluded.netAmount, isLocked=excluded.isLocked;`,
-      args: [q.id, q.storeId, q.quotNo, q.refNo, q.quotDate.toISOString(), q.status, q.customerName, q.customerAddress, q.customerPlace, q.customerGstin, q.deliveryTerms, q.gstNote, q.validity, q.paymentTerms, q.subTotal, q.cgst, q.sgst, q.roundOff, q.netAmount, q.amountInWords, q.isLocked ? 1 : 0, q.createdById, q.updatedById, q.createdAt.toISOString(), q.updatedAt.toISOString(), q.finalizedAt ? q.finalizedAt.toISOString() : null],
+      args: [q.id, q.storeId, q.quotNo, q.refNo, q.quotDate, q.status, q.customerName, q.customerAddress, q.customerPlace, q.customerGstin, q.deliveryTerms, q.gstNote, q.validity, q.paymentTerms, q.subTotal, q.cgst, q.sgst, q.roundOff, q.netAmount, q.amountInWords, q.isLocked, q.createdById, q.updatedById, q.createdAt, q.updatedAt, q.finalizedAt],
     });
   }
 
-  // QuotationLineItems
-  for (const li of lineItems) {
+  for (const li of lineItems as any[]) {
     await remote.execute({
       sql: `INSERT INTO "QuotationLineItem" (id, quotationId, masterItemId, lineNo, description, unit, rate, gstPercent, qty, netValue, quoteMode, weightKg, pieceCount, isLocked)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET qty=excluded.qty, netValue=excluded.netValue, isLocked=excluded.isLocked;`,
-      args: [li.id, li.quotationId, li.masterItemId, li.lineNo, li.description, li.unit, li.rate, li.gstPercent, li.qty, li.netValue, li.quoteMode, li.weightKg, li.pieceCount, li.isLocked ? 1 : 0],
+      args: [li.id, li.quotationId, li.masterItemId, li.lineNo, li.description, li.unit, li.rate, li.gstPercent, li.qty, li.netValue, li.quoteMode, li.weightKg, li.pieceCount, li.isLocked],
     });
   }
 
-  // StoreQuotSequence
-  for (const seq of sequences) {
+  for (const seq of sequences as any[]) {
     await remote.execute({
       sql: `INSERT INTO "StoreQuotSequence" (id, storeId, lastNumber) VALUES (?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET lastNumber=excluded.lastNumber;`,
@@ -334,6 +375,7 @@ async function syncToRemote() {
   }
 
   console.log("\n✅ All local schema changes and data successfully pushed to remote Turso database!");
+  await localClient.close();
   await remote.close();
 }
 
