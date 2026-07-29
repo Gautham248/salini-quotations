@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
 import { computeTotals } from "@/lib/calculations";
+import { nextQuotNo } from "@/lib/quot-no";
 
 export async function GET(req: NextRequest) {
   const s = await requireAuth();
