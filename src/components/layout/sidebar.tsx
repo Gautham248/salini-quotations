@@ -14,6 +14,7 @@ import {
   Menu,
   Ruler,
   Store,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -32,6 +33,7 @@ const superAdminLinks = [
   { href: "/superadmin/stores", label: "Stores", icon: Store },
   { href: "/superadmin/users", label: "All Users", icon: Users },
   { href: "/superadmin/quotations", label: "All Quotations", icon: FileText },
+  { href: "/quotations/new", label: "New Quotation", icon: Plus },
   { href: "/admin/items", label: "Master Items", icon: Package },
   { href: "/admin/units", label: "Units", icon: Ruler },
   { href: "/admin/settings", label: "Settings", icon: Settings },

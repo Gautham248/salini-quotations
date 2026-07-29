@@ -1,10 +1,13 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { useSession } from "next-auth/react";
 import { useQuotation } from "@/hooks/use-quotation";
 import { QuotationHeaderForm } from "@/components/quotations/quotation-header-form";
 import { QuotationLineItems } from "@/components/quotations/quotation-line-items";
 import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
+import { StorePicker } from "@/components/ui/store-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Save, FileDown, Loader2, FileText } from "lucide-react";
@@ -13,10 +16,35 @@ import { useState, useEffect } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 
 export default function NewQuotationPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <NewQuotationContent />
+    </Suspense>
+  );
+}
+
+function NewQuotationContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [finalizing, setFinalizing] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
   const quote = useQuotation();
+
+  const isSuperadmin = session?.user?.role === "superadmin";
+  const storeIdParam = searchParams.get("storeId");
+
+  if (isSuperadmin && !storeIdParam) {
+    return (
+      <StorePicker
+        onSelect={(storeId) => router.push(`/quotations/new?storeId=${storeId}`)}
+      />
+    );
+  }
 
   useEffect(() => {
     fetch("/api/settings")

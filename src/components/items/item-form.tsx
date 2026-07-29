@@ -6,10 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Tags } from "lucide-react";
+import { Check, Tags, X, Plus } from "lucide-react";
 
 interface Unit { id: number; name: string }
 interface Category { id: number; name: string }
+
+interface AlternateUnitEntry {
+  unitId: number;
+  conversionFactor: string;
+}
 
 export interface ItemFormData {
   description: string;
@@ -19,6 +24,7 @@ export interface ItemFormData {
   weightPerUnit: string;
   piecesPerUnit: string;
   categoryIds: number[];
+  alternateUnits: AlternateUnitEntry[];
 }
 
 const DEFAULT: ItemFormData = {
@@ -29,6 +35,7 @@ const DEFAULT: ItemFormData = {
   weightPerUnit: "",
   piecesPerUnit: "",
   categoryIds: [],
+  alternateUnits: [],
 };
 
 export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
@@ -40,6 +47,8 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
 }) {
   const [f, setF] = useState<ItemFormData>(DEFAULT);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [newAltUnitId, setNewAltUnitId] = useState<string>("");
+  const [newAltFactor, setNewAltFactor] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/categories").then(r => r.json()).then(setCategories);
@@ -57,6 +66,32 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
         : [...prev.categoryIds, id],
     }));
   }
+
+  function addAlternateUnit() {
+    const uid = parseInt(newAltUnitId);
+    const factor = parseFloat(newAltFactor);
+    if (!uid || uid <= 0 || !factor || factor <= 0) return;
+    if (uid === f.unitId) return;
+    if (f.alternateUnits.some(a => a.unitId === uid)) return;
+    setF(prev => ({
+      ...prev,
+      alternateUnits: [...prev.alternateUnits, { unitId: uid, conversionFactor: newAltFactor }],
+    }));
+    setNewAltUnitId("");
+    setNewAltFactor("");
+  }
+
+  function removeAlternateUnit(unitId: number) {
+    setF(prev => ({
+      ...prev,
+      alternateUnits: prev.alternateUnits.filter(a => a.unitId !== unitId),
+    }));
+  }
+
+  const primaryUnit = units.find(u => u.id === f.unitId);
+  const availableUnits = units.filter(u =>
+    u.id !== f.unitId && !f.alternateUnits.some(a => a.unitId === u.id)
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,6 +140,69 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
               <Label>GST %</Label>
               <Input type="number" step="0.01" min="0" max="100" value={f.gstPercent} onChange={e => setF({ ...f, gstPercent: e.target.value })} required />
             </div>
+          </div>
+
+          {/* Alternate Units */}
+          <div className="space-y-3 p-3 border rounded-md bg-muted/20">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alternate Units</Label>
+
+            {/* Add row */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <span className="text-[10px] text-muted-foreground">Unit</span>
+                <Select
+                  value={newAltUnitId}
+                  onValueChange={(v) => setNewAltUnitId(v ?? "")}
+                  items={Object.fromEntries(availableUnits.map(u => [String(u.id), u.name]))}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select unit" /></SelectTrigger>
+                  <SelectContent>
+                    {availableUnits.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-24 space-y-1">
+                <span className="text-[10px] text-muted-foreground">1 = X {primaryUnit?.name ?? "unit"}</span>
+                <Input
+                  type="number" step="0.01" min="0.01"
+                  value={newAltFactor}
+                  onChange={e => setNewAltFactor(e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="Factor"
+                />
+              </div>
+              <Button
+                type="button" variant="outline" size="sm" className="h-8 shrink-0"
+                onClick={addAlternateUnit}
+                disabled={!newAltUnitId || !newAltFactor || !parseFloat(newAltFactor)}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              </Button>
+            </div>
+
+            {/* List of added alternate units */}
+            {f.alternateUnits.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {f.alternateUnits.map(a => {
+                  const u = units.find(uu => uu.id === a.unitId);
+                  return (
+                    <div key={a.unitId} className="flex items-center justify-between bg-background border rounded px-3 py-1.5 text-xs">
+                      <span>
+                        <span className="font-medium">{u?.name ?? `Unit #${a.unitId}`}</span>
+                        <span className="text-muted-foreground ml-1">= {a.conversionFactor} {primaryUnit?.name ?? "unit"}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAlternateUnit(a.unitId)}
+                        className="text-muted-foreground hover:text-destructive transition-colors ml-2"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Category multi-select */}

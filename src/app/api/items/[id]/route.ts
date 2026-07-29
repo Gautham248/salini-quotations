@@ -10,7 +10,7 @@ export async function GET(
   const { id } = await params;
   const item = await db.masterItem.findUnique({
     where: { id: parseInt(id) },
-    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
+    include: { unit: true, alternateUnits: { include: { unit: true } }, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
   return item ? NextResponse.json(item) : NextResponse.json({ error: "Not found" }, { status: 404 });
 }
@@ -22,10 +22,13 @@ export async function PUT(
   const s = await requireAdmin();
   const { id } = await params;
   const b = await req.json();
-  const { categoryIds, ...rest } = b;
+  const { categoryIds, alternateUnits, ...rest } = b;
   const numericId = parseInt(id);
 
   await db.itemCategory.deleteMany({ where: { itemId: numericId } });
+  if (alternateUnits !== undefined) {
+    await db.masterItemUnit.deleteMany({ where: { masterItemId: numericId } });
+  }
 
   const item = await db.masterItem.update({
     where: { id: numericId },
@@ -40,8 +43,15 @@ export async function PUT(
       categories: categoryIds?.length
         ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
         : undefined,
+      alternateUnits: alternateUnits?.length
+        ? {
+            create: (alternateUnits as Array<{ unitId: number; conversionFactor: number }>).map(
+              (a) => ({ unitId: a.unitId, conversionFactor: a.conversionFactor })
+            ),
+          }
+        : undefined,
     },
-    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
+    include: { unit: true, alternateUnits: { include: { unit: true } }, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
   });
   return NextResponse.json(item);
 }

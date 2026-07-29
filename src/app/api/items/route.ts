@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     where,
     include: {
       unit: true,
+      alternateUnits: { include: { unit: true } },
       categories: { include: { category: true } },
       createdBy: { select: { username: true } },
       updatedBy: { select: { username: true } },
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const s = await requireAdmin();
   const b = await req.json();
-  const { categoryIds, ...rest } = b;
+  const { categoryIds, alternateUnits, ...rest } = b;
 
   const item = await db.masterItem.create({
     data: {
@@ -80,8 +81,21 @@ export async function POST(req: NextRequest) {
       categories: categoryIds?.length
         ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
         : undefined,
+      alternateUnits: alternateUnits?.length
+        ? {
+            create: (alternateUnits as Array<{ unitId: number; conversionFactor: number }>).map(
+              (a) => ({ unitId: a.unitId, conversionFactor: a.conversionFactor })
+            ),
+          }
+        : undefined,
     },
-    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
+    include: {
+      unit: true,
+      alternateUnits: { include: { unit: true } },
+      categories: { include: { category: true } },
+      createdBy: { select: { username: true } },
+      updatedBy: { select: { username: true } },
+    },
   });
 
   return NextResponse.json(item, { status: 201 });

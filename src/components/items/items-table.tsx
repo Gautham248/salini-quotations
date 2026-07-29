@@ -43,6 +43,7 @@ interface MasterItem {
   piecesPerUnit: number | null;
   isActive: boolean;
   categories: { category: Category }[];
+  alternateUnits?: Array<{ id: number; unitId: number; unit: { id: number; name: string }; conversionFactor: number }>;
   createdBy?: { username: string };
   updatedBy?: { username: string } | null;
 }
@@ -100,6 +101,9 @@ export function ItemsTable() {
       weightPerUnit: d.weightPerUnit ? parseFloat(d.weightPerUnit) : null,
       piecesPerUnit: d.piecesPerUnit ? parseInt(d.piecesPerUnit) : null,
       categoryIds: d.categoryIds,
+      alternateUnits: d.alternateUnits
+        .filter(a => a.unitId > 0 && parseFloat(a.conversionFactor) > 0)
+        .map(a => ({ unitId: a.unitId, conversionFactor: parseFloat(a.conversionFactor) })),
     };
     if (edit) {
       await fetch(`/api/items/${edit.id}`, {
@@ -142,6 +146,11 @@ export function ItemsTable() {
         piecesPerUnit:
           edit.piecesPerUnit != null ? String(edit.piecesPerUnit) : "",
         categoryIds: edit.categories.map((c) => c.category.id),
+        alternateUnits:
+          edit.alternateUnits?.map(a => ({
+            unitId: a.unitId,
+            conversionFactor: String(a.conversionFactor),
+          })) ?? [],
       }
     : null;
 
@@ -288,7 +297,14 @@ export function ItemsTable() {
                   <TableCell className="font-medium text-sm">
                     {i.description}
                   </TableCell>
-                  <TableCell className="text-sm">{i.unit?.name}</TableCell>
+                  <TableCell className="text-sm">
+                    {i.unit?.name}
+                    {(i.alternateUnits?.length ?? 0) > 0 && (
+                      <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                        +{i.alternateUnits!.length}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right text-sm tabular-nums">
                     &#8377;{i.rate.toFixed(2)}{" "}
                     <span className="text-muted-foreground">
