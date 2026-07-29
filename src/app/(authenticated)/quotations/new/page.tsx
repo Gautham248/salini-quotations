@@ -10,7 +10,8 @@ import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import { StorePicker } from "@/components/ui/store-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Save, FileDown, Loader2, FileText, Eye } from "lucide-react";
+import { Save, FileDown, Loader2, FileText, Eye, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
@@ -112,10 +113,16 @@ function NewQuotationContent() {
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
           <div className="flex items-center justify-between gap-2">
-            <h1 className="text-[15px] font-semibold tracking-tight flex items-center gap-2 whitespace-nowrap">
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-              New Quotation
-            </h1>
+            <div className="flex items-center gap-3">
+              <Link href="/quotations">
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <h1 className="text-[15px] font-semibold tracking-tight whitespace-nowrap">
+                New Quotation
+              </h1>
+            </div>
             <div className="flex items-center gap-2">
               {quote.dirty && (
                 <span className="text-[12px] text-amber-600 font-medium">
