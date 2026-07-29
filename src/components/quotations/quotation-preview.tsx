@@ -109,23 +109,23 @@ export function QuotationPreview({
             </tr>
           ))}
           <tr>
-            <td colSpan={5} className="border border-black p-1 text-right font-bold">Sub Total:</td>
+            <td colSpan={6} className="border border-black p-1 text-right font-bold">Sub Total:</td>
             <td className="border border-black p-1 text-right">{safeTotals.subTotal.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={5} className="border border-black p-1 text-right font-bold">CGST:</td>
+            <td colSpan={6} className="border border-black p-1 text-right font-bold">CGST:</td>
             <td className="border border-black p-1 text-right">{safeTotals.cgst.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={5} className="border border-black p-1 text-right font-bold">SGST:</td>
+            <td colSpan={6} className="border border-black p-1 text-right font-bold">SGST:</td>
             <td className="border border-black p-1 text-right">{safeTotals.sgst.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={5} className="border border-black p-1 text-right font-bold">Round Off:</td>
+            <td colSpan={6} className="border border-black p-1 text-right font-bold">Round Off:</td>
             <td className="border border-black p-1 text-right">{safeTotals.roundOff.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={5} className="border border-black p-1 text-right font-bold">Net Amount</td>
+            <td colSpan={6} className="border border-black p-1 text-right font-bold">Net Amount</td>
             <td className="border border-black p-1 text-right font-bold">{safeTotals.netAmount.toFixed(2)}</td>
           </tr>
         </tbody>
