@@ -313,63 +313,237 @@ export default function StoresPage() {
 
       {/* Create Store Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
-          <DialogHeader><DialogTitle>Create New Store</DialogTitle></DialogHeader>
-          <form onSubmit={createStore} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Store Name *</Label><Input value={name} onChange={e => setName(e.target.value)} required /></div>
-              <div className="space-y-1"><Label>Slug *</Label><Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="url-friendly" required /></div>
-              <div className="space-y-1"><Label>Company Name</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} /></div>
-              <div className="space-y-1"><Label>Address</Label><Input value={subheading} onChange={e => setSubheading(e.target.value)} /></div>
-              <div className="space-y-1"><Label>Phone</Label><Input value={phone} onChange={e => setPhone(e.target.value)} /></div>
-              <div className="space-y-1"><Label>Mobile</Label><Input value={mobile} onChange={e => setMobile(e.target.value)} /></div>
-              <div className="space-y-1"><Label>Email</Label><Input value={email} onChange={e => setEmail(e.target.value)} /></div>
-              <div className="space-y-1"><Label>GSTIN</Label><Input value={gstin} onChange={e => setGstin(e.target.value)} /></div>
-              <div className="space-y-1 col-span-2"><Label>Bank Details</Label><Input value={bankDetails} onChange={e => setBankDetails(e.target.value)} /></div>
-            </div>
-            <div className="border-t pt-3">
-              <p className="text-sm font-semibold mb-2">First Admin User (optional)</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Username</Label><Input value={adminUsername} onChange={e => setAdminUsername(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Password</Label><Input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} /></div>
+        <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-xl max-h-[85vh] overflow-y-auto p-5 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Create New Store</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createStore} className="space-y-5 pt-1">
+            {/* Section 1: Store Identity */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Store Identity
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Store Name *</Label>
+                  <Input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Salini Neendoor" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">URL Slug *</Label>
+                  <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="salini-neendoor" required />
+                </div>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={saving}>{saving ? "Creating..." : "Create Store"}</Button>
+
+            <Separator />
+
+            {/* Section 2: Company Details */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Company &amp; Contact Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-medium">Company Name</Label>
+                  <Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="e.g. SALINI NEENDOOR" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-medium">Address / Subheading</Label>
+                  <Input value={subheading} onChange={e => setSubheading(e.target.value)} placeholder="Street address, city, state" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Phone</Label>
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Mobile</Label>
+                  <Input value={mobile} onChange={e => setMobile(e.target.value)} placeholder="+91..." />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Email</Label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="store@example.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">GSTIN</Label>
+                  <Input value={gstin} onChange={e => setGstin(e.target.value)} placeholder="GST Number" />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section 3: Bank & Notices */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Bank &amp; Document Notices
+              </h3>
+              <div className="grid grid-cols-1 gap-3.5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Bank Details</Label>
+                  <Input value={bankDetails} onChange={e => setBankDetails(e.target.value)} placeholder="Bank name, account no, branch, IFSC" />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section 4: Initial Admin User */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                First Admin User (Optional)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Username</Label>
+                  <Input value={adminUsername} onChange={e => setAdminUsername(e.target.value)} placeholder="admin username" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Password</Label>
+                  <Input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="••••••••" />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" className="w-full" disabled={saving}>
+                {saving ? "Creating Store..." : "Create Store"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Edit Store Dialog — full settings */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Store</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-xl max-h-[85vh] overflow-y-auto p-5 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Edit Store</DialogTitle>
+          </DialogHeader>
           {editFetching ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading store details...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading store details...</div>
           ) : (
-            <form onSubmit={saveEdit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Store Name *</Label><Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required /></div>
-                <div className="space-y-1"><Label>Slug *</Label><Input value={editForm.slug} onChange={e => setEditForm({ ...editForm, slug: e.target.value })} required /></div>
+            <form onSubmit={saveEdit} className="space-y-5 pt-1">
+              {/* Section 1: Store Identity */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Store Identity
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Store Name *</Label>
+                    <Input
+                      value={editForm.name}
+                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">URL Slug *</Label>
+                    <Input
+                      value={editForm.slug}
+                      onChange={e => setEditForm({ ...editForm, slug: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
               <Separator />
-              <p className="text-sm font-semibold">Company Settings</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Company Name</Label><Input value={editForm.companyName} onChange={e => setEditForm({ ...editForm, companyName: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Address</Label><Input value={editForm.subheading} onChange={e => setEditForm({ ...editForm, subheading: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Phone</Label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Mobile</Label><Input value={editForm.mobile} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Email</Label><Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
-                <div className="space-y-1"><Label>GSTIN</Label><Input value={editForm.gstin} onChange={e => setEditForm({ ...editForm, gstin: e.target.value })} /></div>
-                <div className="space-y-1 col-span-2"><Label>Bank Details</Label><Input value={editForm.bankDetails} onChange={e => setEditForm({ ...editForm, bankDetails: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Disclaimer</Label><Input value={editForm.disclaimerText} onChange={e => setEditForm({ ...editForm, disclaimerText: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Loading Note</Label><Input value={editForm.loadingNote} onChange={e => setEditForm({ ...editForm, loadingNote: e.target.value })} /></div>
+              {/* Section 2: Company Details */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Company &amp; Contact Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs font-medium">Company Name</Label>
+                    <Input
+                      value={editForm.companyName}
+                      onChange={e => setEditForm({ ...editForm, companyName: e.target.value })}
+                      placeholder="e.g. SALINI NEENDOOR"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs font-medium">Address / Subheading</Label>
+                    <Input
+                      value={editForm.subheading}
+                      onChange={e => setEditForm({ ...editForm, subheading: e.target.value })}
+                      placeholder="Street address, city, state"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Phone</Label>
+                    <Input
+                      value={editForm.phone}
+                      onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Mobile</Label>
+                    <Input
+                      value={editForm.mobile}
+                      onChange={e => setEditForm({ ...editForm, mobile: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Email</Label>
+                    <Input
+                      type="email"
+                      value={editForm.email}
+                      onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">GSTIN</Label>
+                    <Input
+                      value={editForm.gstin}
+                      onChange={e => setEditForm({ ...editForm, gstin: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
+              <Separator />
+
+              {/* Section 3: Quotation Notices & Bank Info */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Bank &amp; Document Notices
+                </h3>
+                <div className="grid grid-cols-1 gap-3.5">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Bank Details</Label>
+                    <Input
+                      value={editForm.bankDetails}
+                      onChange={e => setEditForm({ ...editForm, bankDetails: e.target.value })}
+                      placeholder="Bank name, branch, account details"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Disclaimer / Terms</Label>
+                    <Input
+                      value={editForm.disclaimerText}
+                      onChange={e => setEditForm({ ...editForm, disclaimerText: e.target.value })}
+                      placeholder="e.g. Certified ISO / terms"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Loading / Freight Note</Label>
+                    <Input
+                      value={editForm.loadingNote}
+                      onChange={e => setEditForm({ ...editForm, loadingNote: e.target.value })}
+                      placeholder="e.g. LOADING CHARGE EXTRA"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving ? "Saving Changes..." : "Save Changes"}
+                </Button>
+              </div>
             </form>
           )}
         </DialogContent>

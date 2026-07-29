@@ -150,89 +150,107 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground py-4">Loading settings...</p>
             ) : (
               <form onSubmit={save} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Company Name</Label>
-                <Input
-                  value={s.companyName}
-                  onChange={(e) =>
-                    setS({ ...s, companyName: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Subheading / Address</Label>
-                <Input
-                  value={s.subheading}
-                  onChange={(e) =>
-                    setS({ ...s, subheading: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Phone</Label>
-                <Input
-                  value={s.phone}
-                  onChange={(e) => setS({ ...s, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Mobile</Label>
-                <Input
-                  value={s.mobile}
-                  onChange={(e) => setS({ ...s, mobile: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Email</Label>
-                <Input
-                  value={s.email}
-                  onChange={(e) => setS({ ...s, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">GSTIN</Label>
-                <Input
-                  value={s.gstin}
-                  onChange={(e) => setS({ ...s, gstin: e.target.value })}
-                />
-              </div>
-            </div>
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Company &amp; Contact Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-[13px]">Company Name</Label>
+                      <Input
+                        value={s.companyName}
+                        onChange={(e) =>
+                          setS({ ...s, companyName: e.target.value })
+                        }
+                        placeholder="e.g. SALINI NEENDOOR"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-[13px]">Address / Subheading</Label>
+                      <Input
+                        value={s.subheading}
+                        onChange={(e) =>
+                          setS({ ...s, subheading: e.target.value })
+                        }
+                        placeholder="Street address, city, state"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Phone</Label>
+                      <Input
+                        value={s.phone}
+                        onChange={(e) => setS({ ...s, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Mobile</Label>
+                      <Input
+                        value={s.mobile}
+                        onChange={(e) => setS({ ...s, mobile: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Email</Label>
+                      <Input
+                        type="email"
+                        value={s.email}
+                        onChange={(e) => setS({ ...s, email: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">GSTIN</Label>
+                      <Input
+                        value={s.gstin}
+                        onChange={(e) => setS({ ...s, gstin: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <Separator />
+                <Separator />
 
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Bank Details</Label>
-              <Input
-                value={s.bankDetails}
-                onChange={(e) =>
-                  setS({ ...s, bankDetails: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Disclaimer Text</Label>
-              <Input
-                value={s.disclaimerText}
-                onChange={(e) =>
-                  setS({ ...s, disclaimerText: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Loading Note</Label>
-              <Input
-                value={s.loadingNote}
-                onChange={(e) =>
-                  setS({ ...s, loadingNote: e.target.value })
-                }
-              />
-            </div>
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Bank &amp; Document Notices
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Bank Details</Label>
+                      <Input
+                        value={s.bankDetails}
+                        onChange={(e) =>
+                          setS({ ...s, bankDetails: e.target.value })
+                        }
+                        placeholder="Bank name, branch, account details"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Disclaimer Text</Label>
+                      <Input
+                        value={s.disclaimerText}
+                        onChange={(e) =>
+                          setS({ ...s, disclaimerText: e.target.value })
+                        }
+                        placeholder="e.g. Certified ISO / terms"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Loading Note</Label>
+                      <Input
+                        value={s.loadingNote}
+                        onChange={(e) =>
+                          setS({ ...s, loadingNote: e.target.value })
+                        }
+                        placeholder="e.g. LOADING CHARGE EXTRA"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <Button type="submit" disabled={loading} size="sm">
-              {loading ? "Saving..." : "Save Settings"}
-            </Button>
-          </form>
+                <Button type="submit" disabled={loading} size="sm">
+                  {loading ? "Saving..." : "Save Settings"}
+                </Button>
+              </form>
           )}
         </CardContent>
       </Card>
