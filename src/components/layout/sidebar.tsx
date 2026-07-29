@@ -211,25 +211,39 @@ export function Sidebar() {
 
       {/* ─── Mobile "More" Sheet ─── */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" showCloseButton={false} className="bg-sidebar text-sidebar-foreground border-sidebar-border rounded-t-2xl max-h-[90vh] overflow-y-auto p-0">
-          <SheetHeader className="!p-0 px-5 pt-5 pb-4 border-b border-sidebar-border">
+        <SheetContent side="bottom" showCloseButton={false} className="bg-sidebar text-sidebar-foreground border-sidebar-border rounded-t-3xl max-h-[85vh] overflow-y-auto p-0 shadow-2xl">
+          {/* Top handle pill */}
+          <div className="pt-3 pb-1 flex justify-center">
+            <div className="w-12 h-1.5 rounded-full bg-sidebar-border/80" />
+          </div>
+
+          <SheetHeader className="px-6 pt-2 pb-4 border-b border-sidebar-border space-y-0 text-left">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-sidebar-foreground text-base font-semibold tracking-tight">
-                Salini Traders
-              </SheetTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm border border-primary/30 shrink-0">
+                  {(session?.user?.name?.[0] || "S").toUpperCase()}
+                </div>
+                <div>
+                  <SheetTitle className="text-sidebar-foreground text-base font-semibold tracking-tight leading-none">
+                    Salini Traders
+                  </SheetTitle>
+                  <p className="text-[13px] text-sidebar-foreground/60 leading-normal mt-1 flex items-center gap-1.5">
+                    <span className="font-medium text-sidebar-foreground/80">{session?.user?.name || "Staff"}</span>
+                    <span>·</span>
+                    <span className="text-primary font-semibold capitalize">{session?.user?.role || "staff"}</span>
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setMoreOpen(false)}
-                className="h-8 w-8 rounded-lg flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                className="h-9 w-9 rounded-full flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border/60 shrink-0"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
             </div>
-            <p className="text-[13px] text-sidebar-foreground/60 capitalize text-left leading-normal mt-0.5">
-              {session?.user?.name} · <span className="text-primary font-medium">{session?.user?.role || "staff"}</span>
-            </p>
           </SheetHeader>
 
-          <nav className="py-3 px-3 space-y-1">
+          <nav className="p-4 space-y-1.5">
             {/* All links in the sheet for full access */}
             {links.map((l) => {
               const active = isActive(l.href, pathname);
@@ -239,25 +253,25 @@ export function Sidebar() {
                   href={l.href}
                   onClick={() => setMoreOpen(false)}
                   className={cn(
-                    "flex items-center gap-3.5 rounded-lg px-3.5 py-3 text-sm font-medium transition-colors",
+                    "flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-medium transition-all",
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                      : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-xs border border-sidebar-border/50"
+                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   )}
                 >
-                  <l.icon className="h-5 w-5 shrink-0" />
+                  <l.icon className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "text-sidebar-foreground/60")} />
                   <span>{l.label}</span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-sidebar-border pt-3 mt-1 px-3 pb-12">
+          <div className="border-t border-sidebar-border p-4 pb-12">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex w-full items-center gap-3.5 rounded-lg px-3.5 py-3 text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors text-left"
+              className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors text-left border border-red-500/20"
             >
-              <LogOut className="h-5 w-5 shrink-0" />
+              <LogOut className="h-5 w-5 shrink-0 text-red-400" />
               <span>Sign Out</span>
             </button>
           </div>
