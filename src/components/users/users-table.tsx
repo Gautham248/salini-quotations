@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { UserForm } from "./user-form";
-import { Plus, KeyRound, Loader2 } from "lucide-react";
+import { Plus, KeyRound, Loader2, UserCheck, UserX } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -228,7 +228,7 @@ export function UsersTable() {
                 return (
                   <TableRow
                     key={u.id}
-                    className={!u.isActive ? "opacity-50" : ""}
+                    className="hover:bg-muted/50"
                   >
                     <TableCell className="font-medium text-sm">
                       <div className="flex items-center gap-2">
@@ -261,15 +261,26 @@ export function UsersTable() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={u.isActive ? "default" : "secondary"}
-                        className="text-[11px]"
-                      >
-                        {u.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      {u.isActive ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Inactive
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -280,19 +291,29 @@ export function UsersTable() {
                           }}
                           title="Change Password"
                         >
-                          <KeyRound className="h-3.5 w-3.5" />
+                          <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={Boolean(isSelf)}
-                          onClick={() => toggle(u)}
-                          className={
-                            isSelf ? "opacity-50 cursor-not-allowed" : ""
-                          }
-                        >
-                          {u.isActive ? "Deactivate" : "Activate"}
-                        </Button>
+                        {u.isActive ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={Boolean(isSelf)}
+                            onClick={() => toggle(u)}
+                            className="h-8 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                          >
+                            <UserX className="h-3.5 w-3.5 mr-1" /> Deactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={Boolean(isSelf)}
+                            onClick={() => toggle(u)}
+                            className="h-8 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:text-emerald-800 dark:hover:bg-emerald-950/50 shadow-2xs transition-colors"
+                          >
+                            <UserCheck className="h-3.5 w-3.5 mr-1" /> Activate
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

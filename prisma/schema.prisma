@@ -62,6 +62,7 @@ model Unit {
   createdById Int
   createdAt DateTime         @default(now())
   items     MasterItem[]
+  alternateItems  MasterItemUnit[] @relation("AlternateItemUnit")
   conversionsFrom UnitConversion[] @relation("FromUnit")
   conversionsTo   UnitConversion[] @relation("ToUnit")
 }
@@ -110,6 +111,7 @@ model MasterItem {
   lineItems     QuotationLineItem[]
   categories    ItemCategory[]
   storeRates    ItemStoreRate[]
+  alternateUnits MasterItemUnit[]
 }
 
 model ItemStoreRate {
@@ -122,6 +124,17 @@ model ItemStoreRate {
   updatedAt    DateTime   @updatedAt
 
   @@unique([masterItemId, storeId])
+}
+
+model MasterItemUnit {
+  id               Int        @id @default(autoincrement())
+  masterItem       MasterItem @relation(fields: [masterItemId], references: [id], onDelete: Cascade)
+  masterItemId     Int
+  unit             Unit       @relation("AlternateItemUnit", fields: [unitId], references: [id])
+  unitId           Int
+  conversionFactor Float      @default(1.0)
+
+  @@unique([masterItemId, unitId])
 }
 
 model Quotation {

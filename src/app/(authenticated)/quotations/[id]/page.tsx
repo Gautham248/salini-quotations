@@ -26,8 +26,8 @@ export default function ViewQuotationPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role?.toLowerCase() === "admin";
+  const role = session?.user?.role?.toLowerCase();
+  const isAdmin = role === "admin" || role === "superadmin" || role === "manager";
   const [q, setQ] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 

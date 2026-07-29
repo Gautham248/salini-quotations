@@ -74,7 +74,17 @@
       "Shell(for:*)",
       "Shell(do:*)",
       "Shell(done:*)",
-      "Shell(pdfinfo:*)"
+      "Shell(pdfinfo:*)",
+      "Shell(npx prisma migrate dev --name add_master_item_units 2 >& 1)",
+      "Shell(npx prisma db push 2 >& 1)",
+      "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/manual_add_master_item_units/migration.sql 2>&1)",
+      "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && sqlite3 dev.db \"INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count) VALUES (X'$(uuidgen | tr -d - | xxd -p)', X'$(echo 20260729_add_master_item_units | sha256sum | cut -d' ' -f1)', CURRENT_TIMESTAMP, '20260729_add_master_item_units', NULL, NULL, CURRENT_TIMESTAMP, 1);\")",
+      "Shell(npx prisma migrate resolve --applied 20260729_add_master_item_units 2 >& 1)",
+      "Shell(npx vitest run src/__tests__/item-form.test.tsx 2 >& 1)",
+      "Shell(npx vitest run src/__tests__/alternate-units.test.ts src/__tests__/store-picker.test.tsx src/__tests__/item-form.test.tsx 2 >& 1)",
+      "Shell(npx vitest run src/__tests__/alternate-units.test.ts src/__tests__/store-picker.test.tsx src/__tests__/item-form.test.tsx src/__tests__/sidebar.test.tsx src/__tests__/superadmin-quotation.test.ts 2 >& 1)",
+      "Shell(npx tsc --noEmit)",
+      "Shell(cd /mnt/storage/Projects/LeedsDigital/Projects/Salini-QuotationGenerator/salini-quotation-generator && git commit -F - <<'EOF' feat: add multi-unit products and superadmin quotation creation Multi-Unit Products: - New `MasterItemUnit` junction table linking master items to additional units with item-specific conversion factors - Item form gains \"Alternate Units\" section: pick a unit + factor, add/remove - Item picker cart shows a unit dropdown when alternate units exist, with rate auto-computed from base rate × conversion factor - Items table shows a \"+N\" badge next to the primary unit column - GET/POST/PUT /api/items now include and accept `alternateUnits` Superadmin Quotation Creation: - New `StorePicker` component: fetches stores and renders a selection grid - When superadmin visits /quotations/new without a `?storeId=`, the store picker is shown instead of the form. After selection, redirects to /quotations/new?storeId=X with the chosen store - Superadmin sidebar gains a \"New Quotation\" link for direct access - Existing `resolveStoreId()` already reads the query param, so the API gate remains unchanged Tests: - 61 new tests across 5 files: alternate unit validation, rate auto-compute, form data mapping, StorePicker rendering, sidebar role-specific links, and superadmin quotation creation gate logic Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
     ],
     "deny": [],
     "defaultMode": "default"

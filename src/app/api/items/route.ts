@@ -27,7 +27,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (categoryId) {
-    where.categories = { some: { categoryId: parseInt(categoryId) } };
+    const parsedCatId = parseInt(categoryId);
+    if (!isNaN(parsedCatId)) {
+      where.categories = { some: { categoryId: parsedCatId } };
+    }
   }
 
   if (!showInactive) where.isActive = true;
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest) {
     where,
     include: {
       unit: true,
+      alternateUnits: { include: { unit: true } },
       categories: { include: { category: true } },
       createdBy: { select: { username: true } },
       updatedBy: { select: { username: true } },
@@ -64,25 +68,51 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const s = await requireAdmin();
-  const b = await req.json();
-  const { categoryIds, ...rest } = b;
+  const b = await req.json().catch(() => ({}));
 
-  const item = await db.masterItem.create({
-    data: {
-      description: rest.description,
-      unitId: rest.unitId,
-      rate: rest.rate,
-      gstPercent: rest.gstPercent,
-      weightPerUnit: rest.weightPerUnit || null,
-      piecesPerUnit: rest.piecesPerUnit || null,
-      createdById: s.user.id,
-      updatedById: s.user.id,
-      categories: categoryIds?.length
-        ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
-        : undefined,
-    },
-    include: { unit: true, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
-  });
+  if (!b.description || typeof b.description !== "string" || !b.description.trim()) {
+    return NextResponse.json({ error: "Item description is required" }, { status: 400 });
+  }
 
-  return NextResponse.json(item, { status: 201 });
+  if (!b.unitId || typeof b.unitId !== "number") {
+    return NextResponse.json({ error: "Valid unitId is required" }, { status: 400 });
+  }
+
+  const { categoryIds, alternateUnits, ...rest } = b;
+
+  try {
+    const item = await db.masterItem.create({
+      data: {
+        description: rest.description.trim(),
+        unitId: rest.unitId,
+        rate: typeof rest.rate === "number" ? rest.rate : 0,
+        gstPercent: typeof rest.gstPercent === "number" ? rest.gstPercent : 0,
+        weightPerUnit: rest.weightPerUnit || null,
+        piecesPerUnit: rest.piecesPerUnit ? parseInt(rest.piecesPerUnit) : null,
+        createdById: s.user.id,
+        updatedById: s.user.id,
+        categories: categoryIds?.length
+          ? { create: (categoryIds as number[]).map((catId: number) => ({ categoryId: catId })) }
+          : undefined,
+        alternateUnits: alternateUnits?.length
+          ? {
+              create: (alternateUnits as Array<{ unitId: number; conversionFactor: number }>).map(
+                (a) => ({ unitId: a.unitId, conversionFactor: a.conversionFactor })
+              ),
+            }
+          : undefined,
+      },
+      include: {
+        unit: true,
+        alternateUnits: { include: { unit: true } },
+        categories: { include: { category: true } },
+        createdBy: { select: { username: true } },
+        updatedBy: { select: { username: true } },
+      },
+    });
+
+    return NextResponse.json(item, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Failed to create item" }, { status: 400 });
+  }
 }

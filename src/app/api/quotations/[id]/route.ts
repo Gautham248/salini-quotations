@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
+import { computeTotals, amountInWords } from "@/lib/calculations";
 
 function parseId(id: string): number {
   const n = parseInt(id);
@@ -86,26 +87,7 @@ export async function PUT(
     return NextResponse.json({ error: "Cannot edit finalized quotation" }, { status: 400 });
   }
 
-  await db.quotation.update({
-    where: { id: idn },
-    data: {
-      quotNo: b.quotNo ?? ex.quotNo,
-      refNo: b.refNo ?? ex.refNo,
-      quotDate: b.quotDate ? new Date(b.quotDate) : ex.quotDate,
-      customerName: b.customerName ?? ex.customerName,
-      customerAddress: b.customerAddress,
-      customerPlace: b.customerPlace,
-      customerGstin: b.customerGstin,
-      deliveryTerms: b.deliveryTerms,
-      gstNote: b.gstNote,
-      validity: b.validity ?? ex.validity,
-      paymentTerms: b.paymentTerms ?? ex.paymentTerms,
-      status: b.status ?? ex.status,
-      isLocked: b.isLocked !== undefined ? Boolean(b.isLocked) : ex.isLocked,
-      updatedById: s.user.id,
-    },
-  });
-
+  let totalsData: Record<string, unknown> = {};
   if (b.lineItems && Array.isArray(b.lineItems)) {
     await db.quotationLineItem.deleteMany({ where: { quotationId: idn } });
     const validItems = b.lineItems.filter(
@@ -121,6 +103,22 @@ export async function PUT(
     );
 
     if (validItems.length > 0) {
+      const totals = computeTotals(
+        validItems.map((i: Record<string, unknown>) => ({
+          qty: i.qty as number,
+          rate: i.rate as number,
+          gstPercent: (i.gstPercent as number) || 0,
+        }))
+      );
+      totalsData = {
+        subTotal: totals.subTotal,
+        cgst: totals.cgst,
+        sgst: totals.sgst,
+        roundOff: totals.roundOff,
+        netAmount: totals.netAmount,
+        amountInWords: amountInWords(totals.netAmount),
+      };
+
       await db.quotationLineItem.createMany({
         data: validItems.map((item: Record<string, unknown>, idx: number) => ({
           quotationId: idn,
@@ -138,8 +136,38 @@ export async function PUT(
           isLocked: Boolean(item.isLocked),
         })),
       });
+    } else {
+      totalsData = {
+        subTotal: 0,
+        cgst: 0,
+        sgst: 0,
+        roundOff: 0,
+        netAmount: 0,
+        amountInWords: "Rupees Zero Only",
+      };
     }
   }
+
+  await db.quotation.update({
+    where: { id: idn },
+    data: {
+      quotNo: b.quotNo ?? ex.quotNo,
+      refNo: b.refNo ?? ex.refNo,
+      quotDate: b.quotDate ? new Date(b.quotDate) : ex.quotDate,
+      customerName: b.customerName ?? ex.customerName,
+      customerAddress: b.customerAddress,
+      customerPlace: b.customerPlace,
+      customerGstin: b.customerGstin,
+      deliveryTerms: b.deliveryTerms,
+      gstNote: b.gstNote,
+      validity: b.validity ?? ex.validity,
+      paymentTerms: b.paymentTerms ?? ex.paymentTerms,
+      status: b.status ?? ex.status,
+      isLocked: b.isLocked !== undefined ? Boolean(b.isLocked) : ex.isLocked,
+      updatedById: s.user.id,
+      ...totalsData,
+    },
+  });
 
   const upd = await getQuotation(idn, storeId, s.user.id, isSuperAdmin);
   return NextResponse.json(upd);

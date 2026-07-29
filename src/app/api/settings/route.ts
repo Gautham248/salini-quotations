@@ -20,22 +20,22 @@ export async function PUT(req: Request) {
     return Response.json({ error: "Store context required" }, { status: 400 });
   }
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
   const existing = await db.companySettings.findUnique({ where: { storeId } });
 
   if (existing) {
     const u = await db.companySettings.update({
       where: { id: existing.id },
       data: {
-        companyName: b.companyName,
-        subheading: b.subheading,
-        phone: b.phone,
-        mobile: b.mobile,
-        email: b.email,
-        gstin: b.gstin,
-        bankDetails: b.bankDetails,
-        disclaimerText: b.disclaimerText,
-        loadingNote: b.loadingNote,
+        companyName: b.companyName ?? existing.companyName,
+        subheading: b.subheading ?? existing.subheading,
+        phone: b.phone ?? existing.phone,
+        mobile: b.mobile ?? existing.mobile,
+        email: b.email ?? existing.email,
+        gstin: b.gstin ?? existing.gstin,
+        bankDetails: b.bankDetails ?? existing.bankDetails,
+        disclaimerText: b.disclaimerText ?? existing.disclaimerText,
+        loadingNote: b.loadingNote ?? existing.loadingNote,
       },
     });
     return Response.json(u);

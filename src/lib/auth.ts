@@ -15,9 +15,16 @@ export const authConfig: NextAuthConfig = {
     async authorize(credentials) {
       if (!credentials?.username || !credentials?.password) return null;
       try {
-        const u = await db.user.findUnique({ where: { username: (credentials.username as string) } });
+        const u = await db.user.findUnique({
+          where: { username: (credentials.username as string) },
+          include: { store: true },
+        });
         if (!u || !u.isActive) {
           console.warn(`Auth failed: User '${credentials.username}' not found or inactive.`);
+          return null;
+        }
+        if (u.storeId && u.store && !u.store.isActive && u.role !== "superadmin") {
+          console.warn(`Auth failed: Store '${u.store.name}' for user '${credentials.username}' is inactive.`);
           return null;
         }
         const isValidPassword = await bcrypt.compare(credentials.password as string, u.passwordHash);

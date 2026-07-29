@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await requireAdmin();
-  const { name } = await req.json();
+  const { name } = await req.json().catch(() => ({}));
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
   try {
     const cat = await db.category.create({ data: { name: name.trim() } });

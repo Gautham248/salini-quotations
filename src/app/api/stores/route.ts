@@ -12,49 +12,57 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await requireSuperAdmin();
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
 
-  const store = await db.$transaction(async (tx) => {
-    const s = await tx.store.create({
-      data: {
-        name: b.name,
-        slug: b.slug || b.name.toLowerCase().replace(/\s+/g, "-"),
-      },
-    });
+  if (!b.name || typeof b.name !== "string" || !b.name.trim()) {
+    return NextResponse.json({ error: "Store name is required" }, { status: 400 });
+  }
 
-    // Create CompanySettings for the store
-    await tx.companySettings.create({
-      data: {
-        storeId: s.id,
-        companyName: b.companyName || b.name,
-        subheading: b.subheading || "",
-        phone: b.phone || "",
-        mobile: b.mobile || "",
-        email: b.email || "",
-        gstin: b.gstin || "",
-        bankDetails: b.bankDetails || "",
-      },
-    });
-
-    // Create StoreQuotSequence lock row
-    await tx.storeQuotSequence.create({ data: { storeId: s.id } });
-
-    // Optionally create the first admin user
-    if (b.adminUsername && b.adminPassword) {
-      const hash = await bcrypt.hash(b.adminPassword, 12);
-      await tx.user.create({
+  try {
+    const store = await db.$transaction(async (tx) => {
+      const s = await tx.store.create({
         data: {
-          username: b.adminUsername,
-          passwordHash: hash,
-          role: "admin",
-          storeId: s.id,
-          forcePasswordChange: false,
+          name: b.name.trim(),
+          slug: b.slug ? b.slug.trim() : b.name.trim().toLowerCase().replace(/\s+/g, "-"),
         },
       });
-    }
 
-    return s;
-  });
+      // Create CompanySettings for the store
+      await tx.companySettings.create({
+        data: {
+          storeId: s.id,
+          companyName: b.companyName || b.name,
+          subheading: b.subheading || "",
+          phone: b.phone || "",
+          mobile: b.mobile || "",
+          email: b.email || "",
+          gstin: b.gstin || "",
+          bankDetails: b.bankDetails || "",
+        },
+      });
 
-  return NextResponse.json(store, { status: 201 });
+      // Create StoreQuotSequence lock row
+      await tx.storeQuotSequence.create({ data: { storeId: s.id } });
+
+      // Optionally create the first admin user
+      if (b.adminUsername && b.adminPassword) {
+        const hash = await bcrypt.hash(b.adminPassword, 12);
+        await tx.user.create({
+          data: {
+            username: b.adminUsername,
+            passwordHash: hash,
+            role: "admin",
+            storeId: s.id,
+            forcePasswordChange: false,
+          },
+        });
+      }
+
+      return s;
+    });
+
+    return NextResponse.json(store, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Failed to create store. Name or slug may already exist." }, { status: 409 });
+  }
 }

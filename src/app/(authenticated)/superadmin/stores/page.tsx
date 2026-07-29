@@ -10,7 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Store, Pencil } from "lucide-react";
+import { Plus, Store, Pencil, CheckCircle2, Ban } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,9 @@ export default function StoresPage() {
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+
+  // Toggle store confirm state
+  const [confirmStore, setConfirmStore] = useState<StoreInfo | null>(null);
 
   // Create form state
   const [name, setName] = useState("");
@@ -100,10 +104,21 @@ export default function StoresPage() {
     setSaving(false);
   }
 
-  async function toggle(store: StoreInfo) {
-    await fetch(`/api/stores/${store.id}`, { method: "PATCH" });
-    toast.success(store.isActive ? "Store deactivated" : "Store activated");
-    fetchStores();
+  async function handleToggleConfirm() {
+    if (!confirmStore) return;
+    const isDeactivating = confirmStore.isActive;
+    const r = await fetch(`/api/stores/${confirmStore.id}`, { method: "PATCH" });
+    if (r.ok) {
+      toast.success(
+        isDeactivating
+          ? `Store "${confirmStore.name}" deactivated. Staff access has been suspended.`
+          : `Store "${confirmStore.name}" reactivated. All staff, managers, and data have been restored.`
+      );
+      setConfirmStore(null);
+      fetchStores();
+    } else {
+      toast.error("Failed to update store status");
+    }
   }
 
   async function openEdit(store: StoreInfo) {
@@ -193,25 +208,55 @@ export default function StoresPage() {
             ) : stores.length === 0 ? (
               <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground">No stores yet.</TableCell></TableRow>
             ) : stores.map((s) => (
-              <TableRow key={s.id}>
+              <TableRow key={s.id} className="hover:bg-muted/50">
                 <TableCell className="font-medium text-sm flex items-center gap-2">
                   <Store className="h-4 w-4 text-muted-foreground" />
                   {s.name}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{s.slug}</TableCell>
                 <TableCell>
-                  <Badge variant={s.isActive ? "default" : "secondary"} className="text-[11px]">
-                    {s.isActive ? "Active" : "Inactive"}
-                  </Badge>
+                  {s.isActive ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      Inactive
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1.5">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
                       <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggle(s)}>
-                      {s.isActive ? "Deactivate" : "Activate"}
-                    </Button>
+                    {s.isActive ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmStore(s)}
+                        className="h-8 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                      >
+                        <Ban className="h-3.5 w-3.5 mr-1" /> Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmStore(s)}
+                        className="h-8 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:text-emerald-800 dark:hover:bg-emerald-950/50 shadow-2xs transition-colors"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -283,6 +328,30 @@ export default function StoresPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(confirmStore)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmStore(null);
+        }}
+        title={
+          confirmStore
+            ? confirmStore.isActive
+              ? `Deactivate "${confirmStore.name}"?`
+              : `Reactivate "${confirmStore.name}"?`
+            : ""
+        }
+        description={
+          confirmStore
+            ? confirmStore.isActive
+              ? `Deactivating "${confirmStore.name}" will temporarily suspend login access for all associated staff, managers, and admins. All user accounts, roles, settings, and historical quotations will be fully retained and restored upon reactivation.`
+              : `Reactivating "${confirmStore.name}" will immediately restore system access for all staff, managers, and users assigned to this store.`
+            : ""
+        }
+        confirmLabel={confirmStore?.isActive ? "Deactivate Store" : "Reactivate Store"}
+        destructive={Boolean(confirmStore?.isActive)}
+        onConfirm={handleToggleConfirm}
+      />
     </div>
   );
 }

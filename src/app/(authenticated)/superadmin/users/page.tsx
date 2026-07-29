@@ -13,8 +13,8 @@ import { Card } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, KeyRound } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Plus, KeyRound, UserCheck, UserX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -38,6 +38,13 @@ function UsersContent() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("staff");
   const [newUserStoreId, setNewUserStoreId] = useState<string>("");
+
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  const currentUserId = session?.user ? Number(session.user.id) : null;
+  const currentUsername = session?.user?.name;
 
   useEffect(() => {
     if (urlStoreId) {
@@ -95,6 +102,11 @@ function UsersContent() {
   }
 
   async function roleChange(u: User, nr: string) {
+    const isSelf = (currentUserId && u.id === currentUserId) || u.username === currentUsername;
+    if (isSelf) {
+      toast.error("You cannot change your own role");
+      return;
+    }
     const r = await fetch(`/api/users/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -102,6 +114,37 @@ function UsersContent() {
     });
     if (r.ok) { toast.success(`Role updated to ${nr}`); fetchUsers(); }
     else { const err = await r.json().catch(() => ({})); toast.error(err.error || "Failed"); }
+  }
+
+  async function handleResetPasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetUser || !newPassword.trim()) {
+      toast.error("Enter a new password");
+      return;
+    }
+    setResetting(true);
+    try {
+      const r = await fetch(`/api/users/${resetUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset-password",
+          password: newPassword.trim(),
+        }),
+      });
+      if (r.ok) {
+        toast.success(`Password updated for ${resetUser.username}`);
+        setResetUser(null);
+        setNewPassword("");
+      } else {
+        const err = await r.json().catch(() => ({}));
+        toast.error(err.error || "Failed to reset password");
+      }
+    } catch {
+      toast.error("Error resetting password");
+    } finally {
+      setResetting(false);
+    }
   }
 
   function storeName(storeId: number | null) {
@@ -155,37 +198,92 @@ function UsersContent() {
               <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : users.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No users found.</TableCell></TableRow>
-            ) : users.map(u => (
-              <TableRow key={u.id} className={!u.isActive ? "opacity-50" : ""}>
-                <TableCell className="font-medium text-sm">{u.username}</TableCell>
-                <TableCell className="text-sm">{storeName(u.storeId)}</TableCell>
-                <TableCell>
-                  <Select
-                    value={u.role}
-                    onValueChange={v => roleChange(u, v ?? "staff")}
-                    items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
-                  >
-                    <SelectTrigger className="w-32 h-8 text-[13px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="superadmin">Super Admin</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={u.isActive ? "default" : "secondary"} className="text-[11px]">
-                    {u.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => toggle(u)}>
-                    {u.isActive ? "Deactivate" : "Activate"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : users.map(u => {
+              const isSelf = (currentUserId && u.id === currentUserId) || u.username === currentUsername;
+              return (
+                <TableRow key={u.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{u.username}</span>
+                      {isSelf && <Badge variant="outline" className="text-[10px] py-0 px-1.5">You</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm">{storeName(u.storeId)}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={u.role}
+                      onValueChange={v => roleChange(u, v ?? "staff")}
+                      disabled={Boolean(isSelf)}
+                      items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
+                    >
+                      <SelectTrigger className="w-32 h-8 text-[13px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="superadmin">Super Admin</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {u.isActive ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Inactive
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setResetUser(u);
+                          setNewPassword("");
+                        }}
+                        title="Change Password"
+                      >
+                        <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                      {u.isActive ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={Boolean(isSelf)}
+                          onClick={() => toggle(u)}
+                          className="h-8 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                        >
+                          <UserX className="h-3.5 w-3.5 mr-1" /> Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={Boolean(isSelf)}
+                          onClick={() => toggle(u)}
+                          className="h-8 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 hover:text-emerald-800 dark:hover:bg-emerald-950/50 shadow-2xs transition-colors"
+                        >
+                          <UserCheck className="h-3.5 w-3.5 mr-1" /> Activate
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>
@@ -226,6 +324,65 @@ function UsersContent() {
               </div>
             )}
             <Button type="submit" className="w-full">Add User</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(resetUser)}
+        onOpenChange={(open) => {
+          if (!open) setResetUser(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="h-4 w-4 text-primary" />
+              Change Password
+            </DialogTitle>
+            <DialogDescription className="text-[13px]">
+              Enter a new password for{" "}
+              <span className="font-semibold text-foreground">
+                {resetUser?.username}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleResetPasswordSubmit}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:justify-end pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setResetUser(null)}
+                disabled={resetting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={resetting}>
+                {resetting && (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                )}
+                Update Password
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

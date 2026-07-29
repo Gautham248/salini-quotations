@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
-import { nextQuotNo } from "@/lib/quot-no";
+import { computeTotals } from "@/lib/calculations";
 
 export async function GET(req: NextRequest) {
   const s = await requireAuth();
@@ -39,7 +39,25 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { updatedAt: "desc" },
   });
-  return NextResponse.json(q);
+
+  const res = q.map((item) => {
+    let netAmount = item.netAmount;
+    if ((netAmount === null || netAmount === undefined) && item.lineItems && item.lineItems.length > 0) {
+      netAmount = computeTotals(
+        item.lineItems.map((i) => ({
+          qty: i.qty,
+          rate: i.rate,
+          gstPercent: i.gstPercent,
+        }))
+      ).netAmount;
+    }
+    return {
+      ...item,
+      netAmount,
+    };
+  });
+
+  return NextResponse.json(res);
 }
 
 export async function POST(req: NextRequest) {
@@ -50,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Store context required to create a quotation" }, { status: 400 });
   }
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
 
   const customerName =
     typeof b.customerName === "string" && b.customerName.trim()

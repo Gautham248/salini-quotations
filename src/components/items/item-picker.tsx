@@ -5,14 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Plus, Search, ShoppingCart, X, Check, PackageOpen,
   Tags, Trash2, ChevronRight, LayoutList,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UnitHoverCard } from "./unit-hover-card";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Category { id: number; name: string; _count: { items: number } }
+
+interface AlternateUnitInfo {
+  id: number;
+  unitId: number;
+  unit: { id: number; name: string };
+  conversionFactor: number;
+}
 
 interface MI {
   id: number;
@@ -23,6 +34,7 @@ interface MI {
   weightPerUnit: number | null;
   piecesPerUnit: number | null;
   categories: { category: Category }[];
+  alternateUnits: AlternateUnitInfo[];
 }
 
 export interface CartItem {
@@ -30,11 +42,14 @@ export interface CartItem {
   description: string;
   unit: string;
   unitId: number;
+  selectedUnitId: number;
+  baseRate: number;
   rate: number;
   gstPercent: number;
   qty: number;
   weightPerUnit: number | null;
   piecesPerUnit: number | null;
+  alternateUnits: AlternateUnitInfo[];
 }
 
 export type SelectedItem = CartItem;
@@ -136,11 +151,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
               description: lineItem.description,
               unit: lineItem.unit || catalogMatch?.unit?.name || "",
               unitId: catalogMatch?.unit?.id ?? 0,
+              selectedUnitId: catalogMatch?.unit?.id ?? 0,
+              baseRate: lineItem.rate,
               rate: lineItem.rate,
               gstPercent: lineItem.gstPercent,
               qty: lineItem.qty || 1,
               weightPerUnit: lineItem.weightPerUnit ?? catalogMatch?.weightPerUnit ?? null,
               piecesPerUnit: lineItem.piecesPerUnit ?? catalogMatch?.piecesPerUnit ?? null,
+              alternateUnits: catalogMatch?.alternateUnits ?? [],
             });
           }
         });
@@ -200,11 +218,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
           description: item.description,
           unit: item.unit?.name ?? "",
           unitId: item.unit?.id ?? 0,
+          selectedUnitId: item.unit?.id ?? 0,
+          baseRate: item.rate,
           rate: item.rate,
           gstPercent: item.gstPercent,
           qty: 1,
           weightPerUnit: item.weightPerUnit,
           piecesPerUnit: item.piecesPerUnit,
+          alternateUnits: item.alternateUnits ?? [],
         });
       }
       return next;
@@ -219,6 +240,27 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
       const numericFields: (keyof CartItem)[] = ["rate", "gstPercent", "qty"];
       const value = numericFields.includes(field) ? (parseFloat(raw) || 0) : raw;
       next.set(id, { ...it, [field]: value });
+      return next;
+    });
+  }
+
+  function changeCartUnit(masterItemId: number, newUnitId: number) {
+    setCart(prev => {
+      const next = new Map(prev);
+      const it = next.get(masterItemId);
+      if (!it) return prev;
+      const isPrimary = newUnitId === it.unitId;
+      const alt = it.alternateUnits.find(a => a.unitId === newUnitId);
+      const factor = isPrimary ? 1 : (alt?.conversionFactor ?? 1);
+      const unitName = isPrimary
+        ? (items.find(mi => mi.id === masterItemId)?.unit?.name ?? it.unit)
+        : (alt?.unit?.name ?? "");
+      next.set(masterItemId, {
+        ...it,
+        selectedUnitId: newUnitId,
+        unit: unitName,
+        rate: Math.round(it.baseRate * factor * 100) / 100,
+      });
       return next;
     });
   }
@@ -429,7 +471,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{item.unit?.name}</td>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              <UnitHoverCard
+                                primaryUnit={item.unit}
+                                alternateUnits={item.alternateUnits}
+                                rate={item.rate}
+                                description={item.description}
+                              />
+                            </td>
                             <td className="px-3 py-2.5 text-right tabular-nums font-semibold">₹{item.rate.toFixed(2)}</td>
                             <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">{item.gstPercent}%</td>
                             <td className="px-2 py-2.5 text-center">
@@ -522,12 +571,42 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
                             </label>
                             <label className="flex flex-col gap-1">
                               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Unit</span>
-                              <Input
-                                value={item.unit}
-                                onChange={e => updateCart(item.masterItemId, "unit", e.target.value)}
-                                onClick={e => e.stopPropagation()}
-                                className="h-7 text-xs px-2"
-                              />
+                              {item.alternateUnits.length > 0 ? (
+                                <Select
+                                  value={String(item.selectedUnitId)}
+                                  onValueChange={(v) => { if (v) changeCartUnit(item.masterItemId, parseInt(v)); }}
+                                  items={{
+                                    [String(item.unitId)]: `${items.find(mi => mi.id === item.masterItemId)?.unit?.name ?? item.unit} (Primary)`,
+                                    ...Object.fromEntries(
+                                      item.alternateUnits.map(a => [
+                                        String(a.unitId),
+                                        `${a.unit.name} (×${a.conversionFactor})`
+                                      ])
+                                    )
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={String(item.unitId)}>
+                                      {items.find(mi => mi.id === item.masterItemId)?.unit?.name ?? item.unit} (Primary)
+                                    </SelectItem>
+                                    {item.alternateUnits.map(a => (
+                                      <SelectItem key={a.unitId} value={String(a.unitId)}>
+                                        {a.unit.name} (×{a.conversionFactor})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  value={item.unit}
+                                  onChange={e => updateCart(item.masterItemId, "unit", e.target.value)}
+                                  onClick={e => e.stopPropagation()}
+                                  className="h-7 text-xs px-2"
+                                />
+                              )}
                             </label>
                             <label className="flex flex-col gap-1">
                               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Rate (₹)</span>
