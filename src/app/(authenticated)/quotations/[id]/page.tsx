@@ -25,6 +25,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScaledPreview } from "@/components/quotations/scaled-preview";
+import { cn } from "@/lib/utils";
 
 export default function ViewQuotationPage({
   params,
@@ -161,23 +162,34 @@ export default function ViewQuotationPage({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
               {(isAdmin || q.status === "draft") && (
-                <Link href={`/quotations/${id}/edit`} className="flex-1 sm:flex-initial">
+                <Link href={`/quotations/${id}/edit`} className="w-full sm:w-auto">
                   <Button variant="outline" size="sm" className="w-full sm:w-auto h-9 text-xs sm:text-sm">
                     <Pencil className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                     Edit
                   </Button>
                 </Link>
               )}
-              <Button variant="outline" size="sm" onClick={duplicate} className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={duplicate}
+                className={cn(
+                  "h-9 text-xs sm:text-sm w-full sm:w-auto",
+                  !(isAdmin || q.status === "draft") && "col-span-1"
+                )}
+              >
                 <Copy className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                 <span>Duplicate</span>
               </Button>
               {/* Mobile: Preview & Download — opens sheet then downloads */}
               <Button
                 size="sm"
-                className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm lg:hidden"
+                className={cn(
+                  "h-9 text-xs sm:text-sm lg:hidden w-full sm:w-auto",
+                  (isAdmin || q.status === "draft") ? "col-span-2 sm:col-span-1" : "col-span-1"
+                )}
                 onClick={() => setPreviewOpen(true)}
               >
                 <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />

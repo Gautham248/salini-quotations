@@ -185,7 +185,7 @@ export default function EditQuotationPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             {isAdmin && (
               <Button
                 variant={isDocumentLocked ? "destructive" : "outline"}
@@ -193,8 +193,8 @@ export default function EditQuotationPage({
                 onClick={() => setShowDocLockDialog(true)}
                 className={
                   isDocumentLocked
-                    ? "bg-amber-600 hover:bg-amber-700 text-white flex-1 sm:flex-initial"
-                    : "border-amber-300 text-amber-800 hover:bg-amber-50 flex-1 sm:flex-initial"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto col-span-1"
+                    : "border-amber-300 text-amber-800 hover:bg-amber-50 w-full sm:w-auto col-span-1"
                 }
               >
                 {isDocumentLocked ? (
@@ -209,7 +209,7 @@ export default function EditQuotationPage({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 sm:flex-initial"
+                className="w-full sm:w-auto col-span-1"
                 onClick={quote.manualSave}
                 disabled={quote.saving}
               >
@@ -219,7 +219,7 @@ export default function EditQuotationPage({
             )}
 
             {isAdmin && quote.status === "finalized" && (
-              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="flex-1 sm:flex-initial">
+              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="w-full sm:w-auto col-span-2 sm:col-span-1">
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Mark as Draft
               </Button>
             )}
@@ -228,12 +228,12 @@ export default function EditQuotationPage({
             {!isReadOnlyForStaff && (
               <Button
                 size="sm"
-                className="flex-1 sm:flex-initial lg:hidden text-xs sm:text-sm"
+                className="w-full sm:w-auto lg:hidden text-xs sm:text-sm col-span-2 sm:col-span-1"
                 onClick={() => setPreviewOpen(true)}
                 disabled={finalizing}
               >
                 <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                <span>{quote.status === "finalized" ? "Preview & Re-Finalize" : "Preview & Download"}</span>
+                <span>Preview &amp; Download</span>
               </Button>
             )}
 
