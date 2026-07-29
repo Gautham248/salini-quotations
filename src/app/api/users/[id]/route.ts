@@ -11,6 +11,10 @@ export async function PATCH(
   const { id } = await params;
   const uid = parseInt(id);
 
+  if (isNaN(uid) || uid <= 0) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  }
+
   // Self-modification prevention
   if (uid === s.user.id) {
     return NextResponse.json({ error: "Cannot modify own account" }, { status: 400 });
@@ -25,7 +29,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
 
   if (b.action === "toggle") {
     const upd = await db.user.update({
@@ -37,6 +41,7 @@ export async function PATCH(
   }
 
   if (b.action === "reset-password") {
+    if (!b.password) return NextResponse.json({ error: "Password required" }, { status: 400 });
     const h = await bcrypt.hash(b.password, 12);
     await db.user.update({
       where: { id: uid },

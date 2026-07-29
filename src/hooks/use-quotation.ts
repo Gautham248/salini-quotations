@@ -20,7 +20,7 @@ function calcNetValue(item: LineItem): number {
   return computeNetValue(item.qty, item.rate);
 }
 
-export function useQuotation(existingId?: number) {
+export function useQuotation(existingId?: number, storeIdOverride?: number) {
   const [id, setId] = useState<number | undefined>(existingId);
   const [quotNo, setQuotNo] = useState<string>("");
   const [header, setHeader] = useState(DH);
@@ -37,6 +37,19 @@ export function useQuotation(existingId?: number) {
   const headerRef = useRef(header);
   const isLockedRef = useRef(isLocked);
   const statusRef = useRef(status);
+
+  const getEffectiveStoreId = useCallback(() => {
+    if (storeIdOverride) return storeIdOverride;
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const s = sp.get("storeId");
+      if (s) {
+        const parsed = parseInt(s);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return undefined;
+  }, [storeIdOverride]);
 
   useEffect(() => { itemsRef.current = lineItems; }, [lineItems]);
   useEffect(() => { headerRef.current = header; }, [header]);
@@ -116,10 +129,13 @@ export function useQuotation(existingId?: number) {
       if (!isManual && (!dirtiedRef.current || saving)) return;
       setSaving(true);
 
+      const effectiveStoreId = getEffectiveStoreId();
+
       const saveReq = {
         ...headerRef.current,
         status: statusRef.current,
         isLocked: isLockedRef.current,
+        storeId: effectiveStoreId,
         quotDate: new Date(headerRef.current.quotDate),
         lineItems: itemsRef.current.map(i => ({
           masterItemId: i.masterItemId,
@@ -153,7 +169,10 @@ export function useQuotation(existingId?: number) {
             if (isManual) toast.error(err.error || "Failed to save draft");
           }
         } else {
-          const r = await fetch("/api/quotations", {
+          const postUrl = effectiveStoreId
+            ? `/api/quotations?storeId=${effectiveStoreId}`
+            : "/api/quotations";
+          const r = await fetch(postUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(saveReq),
@@ -177,7 +196,7 @@ export function useQuotation(existingId?: number) {
         setSaving(false);
       }
     },
-    [id, saving]
+    [id, saving, getEffectiveStoreId]
   );
 
   useEffect(() => {

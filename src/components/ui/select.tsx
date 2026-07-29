@@ -6,51 +6,15 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-interface SelectContextValue {
-  registerItem: (value: string, label: React.ReactNode) => void;
-  unregisterItem: (value: string) => void;
-  itemsMap: Map<string, React.ReactNode>;
-}
-
-const SelectItemsContext = React.createContext<SelectContextValue | null>(null);
-
 function Select<Value = any>({
   children,
   items: itemsProp,
   ...props
 }: SelectPrimitive.Root.Props<Value>) {
-  const [itemsMap, setItemsMap] = React.useState<Map<string, React.ReactNode>>(new Map());
-
-  const registerItem = React.useCallback((val: string, label: React.ReactNode) => {
-    setItemsMap((prev) => {
-      if (prev.get(val) === label) return prev;
-      const next = new Map(prev);
-      next.set(val, label);
-      return next;
-    });
-  }, []);
-
-  const unregisterItem = React.useCallback((val: string) => {
-    setItemsMap((prev) => {
-      if (!prev.has(val)) return prev;
-      const next = new Map(prev);
-      next.delete(val);
-      return next;
-    });
-  }, []);
-
-  const mergedItems = React.useMemo(() => {
-    if (itemsProp) return itemsProp;
-    if (itemsMap.size > 0) return Object.fromEntries(itemsMap);
-    return undefined;
-  }, [itemsProp, itemsMap]);
-
   return (
-    <SelectItemsContext.Provider value={{ registerItem, unregisterItem, itemsMap }}>
-      <SelectPrimitive.Root items={mergedItems} {...props}>
-        {children}
-      </SelectPrimitive.Root>
-    </SelectItemsContext.Provider>
+    <SelectPrimitive.Root items={itemsProp} {...props}>
+      {children}
+    </SelectPrimitive.Root>
   );
 }
 
@@ -162,17 +126,6 @@ function SelectItem({
   value,
   ...props
 }: SelectPrimitive.Item.Props) {
-  const ctx = React.useContext(SelectItemsContext);
-
-  React.useEffect(() => {
-    if (ctx && value !== undefined && value !== null) {
-      ctx.registerItem(String(value), children);
-      return () => {
-        ctx.unregisterItem(String(value));
-      };
-    }
-  }, [ctx, value, children]);
-
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -258,4 +211,3 @@ export {
   SelectTrigger,
   SelectValue,
 }
-

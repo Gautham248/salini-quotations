@@ -22,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { ItemForm, type ItemFormData } from "./item-form";
 import { CategoryManager } from "./category-manager";
+import { UnitHoverCard } from "./unit-hover-card";
 import { Plus, Search, Pencil, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -292,18 +293,18 @@ export function ItemsTable() {
               items.map((i) => (
                 <TableRow
                   key={i.id}
-                  className={!i.isActive ? "opacity-50" : ""}
+                  className="hover:bg-muted/50"
                 >
                   <TableCell className="font-medium text-sm">
                     {i.description}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {i.unit?.name}
-                    {(i.alternateUnits?.length ?? 0) > 0 && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                        +{i.alternateUnits!.length}
-                      </span>
-                    )}
+                    <UnitHoverCard
+                      primaryUnit={i.unit}
+                      alternateUnits={i.alternateUnits}
+                      rate={i.rate}
+                      description={i.description}
+                    />
                   </TableCell>
                   <TableCell className="text-right text-sm tabular-nums">
                     &#8377;{i.rate.toFixed(2)}{" "}
@@ -346,9 +347,21 @@ export function ItemsTable() {
                           {i.isActive ? "Active" : "Inactive"}
                         </span>
                       </div>
+                    ) : i.isActive ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active
+                      </Badge>
                     ) : (
-                      <Badge variant={i.isActive ? "default" : "secondary"} className="text-[11px]">
-                        {i.isActive ? "Active" : "Inactive"}
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 w-fit"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Inactive
                       </Badge>
                     )}
                   </TableCell>

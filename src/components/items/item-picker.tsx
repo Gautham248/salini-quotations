@@ -12,6 +12,7 @@ import {
   Tags, Trash2, ChevronRight, LayoutList,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UnitHoverCard } from "./unit-hover-card";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -470,7 +471,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{item.unit?.name}</td>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              <UnitHoverCard
+                                primaryUnit={item.unit}
+                                alternateUnits={item.alternateUnits}
+                                rate={item.rate}
+                                description={item.description}
+                              />
+                            </td>
                             <td className="px-3 py-2.5 text-right tabular-nums font-semibold">₹{item.rate.toFixed(2)}</td>
                             <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">{item.gstPercent}%</td>
                             <td className="px-2 py-2.5 text-center">
@@ -567,13 +575,15 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
                                 <Select
                                   value={String(item.selectedUnitId)}
                                   onValueChange={(v) => { if (v) changeCartUnit(item.masterItemId, parseInt(v)); }}
-                                  items={Object.fromEntries([
-                                    [String(item.unitId), `${items.find(mi => mi.id === item.masterItemId)?.unit?.name ?? item.unit} (Primary)`],
-                                    ...item.alternateUnits.map(a => [
-                                      String(a.unitId),
-                                      `${a.unit.name} (×${a.conversionFactor})`
-                                    ])
-                                  ])}
+                                  items={{
+                                    [String(item.unitId)]: `${items.find(mi => mi.id === item.masterItemId)?.unit?.name ?? item.unit} (Primary)`,
+                                    ...Object.fromEntries(
+                                      item.alternateUnits.map(a => [
+                                        String(a.unitId),
+                                        `${a.unit.name} (×${a.conversionFactor})`
+                                      ])
+                                    )
+                                  }}
                                 >
                                   <SelectTrigger className="h-7 text-xs">
                                     <SelectValue />

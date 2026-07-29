@@ -10,6 +10,11 @@ export async function POST(
 ) {
   const s = await requireAuth();
   const { id } = await params;
+  const numericId = parseInt(id);
+  if (isNaN(numericId) || numericId <= 0) {
+    return NextResponse.json({ error: "Invalid quotation ID" }, { status: 400 });
+  }
+
   const storeId = await resolveStoreId(_req);
 
   if (!storeId) {
@@ -17,7 +22,7 @@ export async function POST(
   }
 
   const orig = await db.quotation.findUnique({
-    where: { id: parseInt(id) },
+    where: { id: numericId },
     include: { lineItems: true },
   });
 

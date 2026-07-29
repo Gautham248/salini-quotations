@@ -8,7 +8,8 @@ async function getTargetStoreId(req: NextRequest): Promise<number | null> {
   const storeIdParam = searchParams.get("storeId");
 
   if ((s.user.role === "superadmin" || s.user.role === "manager") && storeIdParam) {
-    return parseInt(storeIdParam);
+    const parsed = parseInt(storeIdParam);
+    return isNaN(parsed) ? null : parsed;
   }
   const resolved = await resolveStoreId(req);
   return resolved;
@@ -20,10 +21,14 @@ export async function PUT(
 ) {
   const { id } = await params;
   const masterItemId = parseInt(id);
+  if (isNaN(masterItemId) || masterItemId <= 0) {
+    return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
+  }
+
   const storeId = await getTargetStoreId(req);
   if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 });
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
   if (typeof b.rate !== "number" || !isFinite(b.rate) || b.rate < 0) {
     return NextResponse.json({ error: "Valid non-negative rate required" }, { status: 400 });
   }
@@ -46,6 +51,10 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const masterItemId = parseInt(id);
+  if (isNaN(masterItemId) || masterItemId <= 0) {
+    return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
+  }
+
   const storeId = await getTargetStoreId(req);
   if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 });
 

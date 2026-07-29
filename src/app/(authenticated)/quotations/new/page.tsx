@@ -33,18 +33,12 @@ function NewQuotationContent() {
   const { data: session } = useSession();
   const [finalizing, setFinalizing] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
-  const quote = useQuotation();
 
   const isSuperadmin = session?.user?.role === "superadmin";
   const storeIdParam = searchParams.get("storeId");
+  const storeIdToUse = storeIdParam ? parseInt(storeIdParam) : undefined;
 
-  if (isSuperadmin && !storeIdParam) {
-    return (
-      <StorePicker
-        onSelect={(storeId) => router.push(`/quotations/new?storeId=${storeId}`)}
-      />
-    );
-  }
+  const quote = useQuotation(undefined, storeIdToUse);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -54,6 +48,14 @@ function NewQuotationContent() {
       })
       .catch(() => {});
   }, []);
+
+  if (isSuperadmin && !storeIdParam) {
+    return (
+      <StorePicker
+        onSelect={(storeId) => router.push(`/quotations/new?storeId=${storeId}`)}
+      />
+    );
+  }
 
   async function finalize() {
     if (!quote.header.customerName.trim()) {

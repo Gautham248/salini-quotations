@@ -8,11 +8,17 @@ export async function PUT(
 ) {
   await requireAdmin();
   const { id } = await params;
-  const { name } = await req.json();
+  const numericId = parseInt(id);
+  if (isNaN(numericId) || numericId <= 0) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  }
+
+  const { name } = await req.json().catch(() => ({}));
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+
   try {
     const cat = await db.category.update({
-      where: { id: parseInt(id) },
+      where: { id: numericId },
       data: { name: name.trim() },
     });
     return NextResponse.json(cat);
@@ -27,6 +33,15 @@ export async function DELETE(
 ) {
   await requireAdmin();
   const { id } = await params;
-  await db.category.delete({ where: { id: parseInt(id) } });
-  return NextResponse.json({ ok: true });
+  const numericId = parseInt(id);
+  if (isNaN(numericId) || numericId <= 0) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  }
+
+  try {
+    await db.category.delete({ where: { id: numericId } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Category not found" }, { status: 404 });
+  }
 }

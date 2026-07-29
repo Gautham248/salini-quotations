@@ -30,7 +30,8 @@ interface QS {
 
 export default function StaffQuotationsPage() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
+  const role = session?.user?.role?.toLowerCase();
+  const isAdmin = role === "admin" || role === "superadmin" || role === "manager";
   const [q, setQ] = useState<QS[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
