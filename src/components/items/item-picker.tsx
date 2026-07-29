@@ -120,6 +120,12 @@ async function fetchCatalogCached(): Promise<{ items: MI[]; categories: Category
   return catalogFetchPromise;
 }
 
+export function prefetchCatalog() {
+  if (!cachedItems || !cachedCategories) {
+    fetchCatalogCached();
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearDraft }: ItemPickerProps) {
@@ -133,6 +139,11 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
   const [confirmClose, setConfirmClose] = useState(false);
   const [showCartMobile, setShowCartMobile] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Eagerly prefetch catalog in background on component mount so modal opens instantly
+  useEffect(() => {
+    fetchCatalogCached();
+  }, []);
 
   // Load catalog and populate existing line items when modal opens
   useEffect(() => {
@@ -322,7 +333,14 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
 
   return (
     <>
-      <Button variant="outline" size="sm" type="button" onClick={() => setOpen(true)}>
+      <Button
+        variant="outline"
+        size="sm"
+        type="button"
+        onClick={() => setOpen(true)}
+        onMouseEnter={prefetchCatalog}
+        onFocus={prefetchCatalog}
+      >
         <Plus className="h-4 w-4 mr-2" />Add from Catalog
       </Button>
 
