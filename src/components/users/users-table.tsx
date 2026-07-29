@@ -289,8 +289,13 @@ function UsersTableInner() {
             value={filterStoreId}
             onValueChange={(v) => setFilterStoreId(v ?? "all")}
           >
-            <SelectTrigger className="w-full sm:w-44 h-9 text-[13px]">
-              <SelectValue placeholder="All stores" />
+            <SelectTrigger className="w-full sm:w-auto min-w-[160px] h-9 text-[13px]">
+              <span className="text-muted-foreground font-medium mr-1">Store:</span>
+              <SelectValue>
+                {filterStoreId === "all"
+                  ? "All Stores"
+                  : stores.find((s) => String(s.id) === filterStoreId)?.name || "All Stores"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Stores</SelectItem>

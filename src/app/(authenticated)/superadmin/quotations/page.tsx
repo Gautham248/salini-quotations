@@ -113,7 +113,14 @@ function QuotationsContent() {
           value={filterStoreId}
           onValueChange={v => setFilterStoreId(v ?? "all")}
         >
-          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All stores" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
+            <span className="text-muted-foreground font-medium mr-1">Store:</span>
+            <SelectValue>
+              {filterStoreId === "all"
+                ? "All Stores"
+                : stores.find(s => String(s.id) === filterStoreId)?.name || "All Stores"}
+            </SelectValue>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stores</SelectItem>
             {stores.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -124,7 +131,14 @@ function QuotationsContent() {
           value={filterStatus}
           onValueChange={v => setFilterStatus(v ?? "all")}
         >
-          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
+            <span className="text-muted-foreground font-medium mr-1">Status:</span>
+            <SelectValue>
+              {filterStatus === "all"
+                ? "All Statuses"
+                : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
+            </SelectValue>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
@@ -138,7 +152,20 @@ function QuotationsContent() {
           value={filterPeriod}
           onValueChange={v => setFilterPeriod(v ?? "all")}
         >
-          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All time" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
+            <span className="text-muted-foreground font-medium mr-1">Period:</span>
+            <SelectValue>
+              {filterPeriod === "all"
+                ? "All Time"
+                : filterPeriod === "24h"
+                ? "Last 24 Hours"
+                : filterPeriod === "7d"
+                ? "Last 7 Days"
+                : filterPeriod === "30d"
+                ? "Last 30 Days"
+                : "All Time"}
+            </SelectValue>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Time</SelectItem>
             <SelectItem value="24h">Last 24 Hours</SelectItem>
