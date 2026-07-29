@@ -26,6 +26,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -66,6 +73,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [confirmSignOutOpen, setConfirmSignOutOpen] = useState(false);
 
   const role = session?.user?.role;
 
@@ -153,7 +161,7 @@ export function Sidebar() {
             </div>
           )}
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => setConfirmSignOutOpen(true)}
             className={cn(
               "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium text-sidebar-foreground/55 hover:text-red-400 hover:bg-red-400/10 transition-colors text-left",
               collapsed && "justify-center px-0"
@@ -268,7 +276,7 @@ export function Sidebar() {
 
           <div className="border-t border-sidebar-border p-4 pb-12">
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => setConfirmSignOutOpen(true)}
               className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors text-left border border-red-500/20"
             >
               <LogOut className="h-5 w-5 shrink-0 text-red-400" />
@@ -277,6 +285,38 @@ export function Sidebar() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* ─── Sign Out Confirmation Dialog ─── */}
+      <Dialog open={confirmSignOutOpen} onOpenChange={setConfirmSignOutOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Sign Out</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground pt-1">
+              Are you sure you want to sign out of your account?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-end gap-2.5 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmSignOutOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setConfirmSignOutOpen(false);
+                setMoreOpen(false);
+                signOut({ callbackUrl: "/login" });
+              }}
+            >
+              Sign Out
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
