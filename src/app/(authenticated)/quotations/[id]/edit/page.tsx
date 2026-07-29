@@ -372,21 +372,21 @@ export default function EditQuotationPage({
       {/* Mobile Preview & Download Sheet */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
         <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
-          <SheetHeader className="!p-0 px-5 pt-4 pb-3.5 border-b bg-muted/20">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-semibold">
+          <SheetHeader className="!p-0 px-6 pt-5 pb-4 border-b bg-muted/20">
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="text-base font-semibold shrink-0">
                 PDF Preview
               </SheetTitle>
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={finalize} disabled={finalizing} className="h-8 text-xs">
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={finalize} disabled={finalizing} className="h-9 px-3.5 text-xs font-medium">
                   {finalizing ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   ) : (
                     <FileDown className="h-3.5 w-3.5 mr-1.5" />
                   )}
-                  {quote.status === "finalized" ? "Re-Finalize & Download" : "Finalize & Download"}
+                  Download
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} className="h-8 text-xs">
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} className="h-9 px-3.5 text-xs font-medium">
                   Close
                 </Button>
               </div>
