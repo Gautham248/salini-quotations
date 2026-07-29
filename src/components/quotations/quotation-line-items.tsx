@@ -474,12 +474,12 @@ export function QuotationLineItems({
       {/* ── Mobile per-item edit sheet ── */}
       <Sheet open={editingItem !== null} onOpenChange={open => !open && setEditingItem(null)}>
         <SheetContent side="bottom" showCloseButton={false} className="p-0 rounded-t-2xl max-h-[90vh] overflow-y-auto">
-          <SheetHeader className="!p-0 px-4 pt-4 pb-3 border-b">
+          <SheetHeader className="!p-0 px-5 pt-4 pb-3.5 border-b bg-muted/20">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-base font-semibold">
                 {editingItem ? (editingItem.description || "Edit Item") : "Edit Item"}
               </SheetTitle>
-              <Button variant="outline" size="sm" onClick={() => setEditingItem(null)}>Done</Button>
+              <Button variant="outline" size="sm" onClick={() => setEditingItem(null)} className="h-8 text-xs">Done</Button>
             </div>
           </SheetHeader>
           {editingItem && (() => {
@@ -493,7 +493,7 @@ export function QuotationLineItems({
               setEditingItem(prev => prev ? { ...prev, [f]: v } : prev);
             };
             return (
-              <div className="p-4 space-y-4">
+              <div className="p-5 space-y-4 pb-12">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Description</Label>
                   <Input

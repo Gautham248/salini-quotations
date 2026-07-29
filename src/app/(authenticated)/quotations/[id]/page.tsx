@@ -271,21 +271,23 @@ export default function ViewQuotationPage({
       {/* Mobile Preview & Download Sheet */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
         <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
-          <SheetHeader className="!p-0 px-4 pt-4 pb-3 border-b sticky top-0 bg-background z-10">
+          <SheetHeader className="!p-0 px-5 pt-4 pb-3.5 border-b bg-muted/20">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-semibold">PDF Preview</SheetTitle>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => { downloadPdf(); setPreviewOpen(false); }}>
+              <SheetTitle className="text-base font-semibold">
+                PDF Preview
+              </SheetTitle>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={downloadPdf} className="h-8 text-xs">
                   <FileDown className="h-3.5 w-3.5 mr-1.5" />
                   Download
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)}>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} className="h-8 text-xs">
                   Close
                 </Button>
               </div>
             </div>
           </SheetHeader>
-          <div className="p-2">
+          <div className="p-4 pb-12">
             <ScaledPreview
               header={header}
               lineItems={lineItems}
