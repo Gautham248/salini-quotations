@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
-import { computeTotals } from "@/lib/calculations";
+import { computeTotals, amountInWords } from "@/lib/calculations";
 import { nextQuotNo } from "@/lib/quot-no";
 
 export async function GET(req: NextRequest) {
@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
           qty: i.qty,
           rate: i.rate,
           gstPercent: i.gstPercent,
+          netValue: i.netValue,
         }))
       ).netAmount;
     }
@@ -104,6 +105,15 @@ export async function POST(req: NextRequest) {
         typeof item.description === "string" && item.description.trim().length > 0
     );
     if (validItems.length > 0) {
+      const totals = computeTotals(
+        validItems.map((i: Record<string, unknown>) => ({
+          qty: (i.qty as number) || 0,
+          rate: (i.rate as number) || 0,
+          gstPercent: (i.gstPercent as number) || 0,
+          netValue: typeof i.netValue === "number" ? i.netValue : undefined,
+        }))
+      );
+
       await db.quotationLineItem.createMany({
         data: validItems.map((item: Record<string, unknown>, idx: number) => ({
           quotationId: q.id,
@@ -120,6 +130,18 @@ export async function POST(req: NextRequest) {
           pieceCount: (item.pieceCount as number) || null,
           isLocked: Boolean(item.isLocked),
         })),
+      });
+
+      await db.quotation.update({
+        where: { id: q.id },
+        data: {
+          subTotal: totals.subTotal,
+          cgst: totals.cgst,
+          sgst: totals.sgst,
+          roundOff: totals.roundOff,
+          netAmount: totals.netAmount,
+          amountInWords: amountInWords(totals.netAmount),
+        },
       });
     }
   }

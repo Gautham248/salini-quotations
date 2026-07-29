@@ -3,17 +3,38 @@ export function round(num: number, decimals: number = 2): number {
   return Math.round((num + Number.EPSILON) * factor) / factor;
 }
 
-export interface LineItemInput { qty: number; rate: number; gstPercent: number; }
-
-export interface LineTotals {
-  subTotal: number; cgst: number; sgst: number; roundOff: number; netAmount: number; totalGst: number;
+export interface LineItemInput {
+  qty: number;
+  rate: number;
+  gstPercent: number;
+  netValue?: number;
 }
 
-export function computeNetValue(qty: number, rate: number): number { return round(qty * rate); }
+export interface LineTotals {
+  subTotal: number;
+  cgst: number;
+  sgst: number;
+  roundOff: number;
+  netAmount: number;
+  totalGst: number;
+}
+
+export function computeNetValue(qty: number, rate: number): number {
+  return round(qty * rate);
+}
+
+export function computeLineNetValue(item: LineItemInput): number {
+  if (typeof item.netValue === "number" && Number.isFinite(item.netValue) && item.netValue >= 0) {
+    return round(item.netValue);
+  }
+  return computeNetValue(item.qty, item.rate);
+}
+
 export function computeTotals(items: LineItemInput[]): LineTotals {
-  const subTotal = round(items.reduce((s, i) => s + computeNetValue(i.qty, i.rate), 0));
-  const totalGst = round(items.reduce((s, i) => s + computeNetValue(i.qty, i.rate) * (i.gstPercent / 100), 0));
-  const cgst = round(totalGst / 2); const sgst = round(totalGst / 2);
+  const subTotal = round(items.reduce((s, i) => s + computeLineNetValue(i), 0));
+  const totalGst = round(items.reduce((s, i) => s + computeLineNetValue(i) * (i.gstPercent / 100), 0));
+  const cgst = round(totalGst / 2);
+  const sgst = round(totalGst / 2);
   const rawTotal = subTotal + cgst + sgst;
   const netAmount = Math.round(rawTotal);
   const roundOff = round(netAmount - rawTotal);
