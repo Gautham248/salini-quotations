@@ -110,13 +110,13 @@ function NewQuotationContent() {
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex items-center justify-between bg-card px-4 py-3 rounded-lg border shadow-sm">
-          <div>
-            <h1 className="text-[15px] font-semibold tracking-tight flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-[15px] font-semibold tracking-tight flex items-center gap-2 whitespace-nowrap">
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               New Quotation
             </h1>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2">
               {quote.dirty && (
                 <span className="text-[12px] text-amber-600 font-medium">
                   Unsaved changes
@@ -129,25 +129,26 @@ function NewQuotationContent() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
+              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm"
               onClick={quote.manualSave}
               disabled={quote.saving}
             >
-              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Save className="h-3.5 w-3.5 mr-1.5 shrink-0" />
               Save Draft
             </Button>
             {/* Mobile Preview & Download */}
             <Button
               size="sm"
-              className="lg:hidden"
+              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm lg:hidden"
               onClick={() => setPreviewOpen(true)}
               disabled={finalizing}
             >
-              <Eye className="h-3.5 w-3.5 mr-1.5" />
-              Preview &amp; Download
+              <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+              <span>Preview &amp; Download</span>
             </Button>
             {/* Desktop Generate PDF */}
             <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>

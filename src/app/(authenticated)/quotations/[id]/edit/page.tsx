@@ -143,15 +143,15 @@ export default function EditQuotationPage({
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex items-center justify-between bg-card px-4 py-3 rounded-lg border shadow-sm flex-wrap gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
           <div className="flex items-center gap-3">
             <Link href="/quotations">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[15px] font-semibold tracking-tight">
                   Edit Quotation
                 </h1>
@@ -185,7 +185,7 @@ export default function EditQuotationPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             {isAdmin && (
               <Button
                 variant={isDocumentLocked ? "destructive" : "outline"}
@@ -193,8 +193,8 @@ export default function EditQuotationPage({
                 onClick={() => setShowDocLockDialog(true)}
                 className={
                   isDocumentLocked
-                    ? "bg-amber-600 hover:bg-amber-700 text-white"
-                    : "border-amber-300 text-amber-800 hover:bg-amber-50"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white flex-1 sm:flex-initial"
+                    : "border-amber-300 text-amber-800 hover:bg-amber-50 flex-1 sm:flex-initial"
                 }
               >
                 {isDocumentLocked ? (
@@ -209,6 +209,7 @@ export default function EditQuotationPage({
               <Button
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-initial"
                 onClick={quote.manualSave}
                 disabled={quote.saving}
               >
@@ -218,7 +219,7 @@ export default function EditQuotationPage({
             )}
 
             {isAdmin && quote.status === "finalized" && (
-              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft}>
+              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="flex-1 sm:flex-initial">
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Mark as Draft
               </Button>
             )}
@@ -227,12 +228,12 @@ export default function EditQuotationPage({
             {!isReadOnlyForStaff && (
               <Button
                 size="sm"
-                className="lg:hidden"
+                className="flex-1 sm:flex-initial lg:hidden text-xs sm:text-sm"
                 onClick={() => setPreviewOpen(true)}
                 disabled={finalizing}
               >
-                <Eye className="h-3.5 w-3.5 mr-1.5" />
-                {quote.status === "finalized" ? "Preview & Re-Finalize" : "Preview & Download"}
+                <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                <span>{quote.status === "finalized" ? "Preview & Re-Finalize" : "Preview & Download"}</span>
               </Button>
             )}
 

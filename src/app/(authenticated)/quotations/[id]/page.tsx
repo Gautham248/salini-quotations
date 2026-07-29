@@ -131,10 +131,10 @@ export default function ViewQuotationPage({
         {/* Left: Details */}
         <div className="flex-1 min-w-0 flex flex-col gap-5">
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
             <div className="flex items-center gap-3">
               <Link href="/quotations">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
@@ -161,35 +161,35 @@ export default function ViewQuotationPage({
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {(isAdmin || q.status === "draft") && (
-                <Link href={`/quotations/${id}/edit`}>
-                  <Button variant="outline" size="sm">
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                <Link href={`/quotations/${id}/edit`} className="flex-1 sm:flex-initial">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto h-9 text-xs sm:text-sm">
+                    <Pencil className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                     Edit
                   </Button>
                 </Link>
               )}
-              <Button variant="outline" size="sm" onClick={duplicate}>
-                <Copy className="h-3.5 w-3.5 mr-1.5" />
-                <span className="hidden sm:inline">Duplicate</span>
+              <Button variant="outline" size="sm" onClick={duplicate} className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm">
+                <Copy className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                <span>Duplicate</span>
               </Button>
               {/* Mobile: Preview & Download — opens sheet then downloads */}
               <Button
                 size="sm"
-                className="lg:hidden"
+                className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm lg:hidden"
                 onClick={() => setPreviewOpen(true)}
               >
-                <Eye className="h-3.5 w-3.5 mr-1.5" />
-                Preview &amp; Download
+                <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                <span>Preview &amp; Download</span>
               </Button>
               {/* Desktop: direct download */}
               <Button
                 size="sm"
-                className="hidden lg:flex"
+                className="hidden lg:flex h-9"
                 onClick={downloadPdf}
               >
-                <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                <FileDown className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                 Download PDF
               </Button>
             </div>
