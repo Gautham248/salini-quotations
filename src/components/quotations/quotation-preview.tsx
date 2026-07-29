@@ -130,8 +130,7 @@ export function QuotationPreview({
           </tr>
         </tbody>
       </table>
-      <div className="flex justify-between text-[10px] mb-2">
-        <span>E&amp;OE</span>
+      <div className="flex justify-end text-[10px] mb-2">
         <span className="font-bold">{amountInWords(safeTotals.netAmount)}</span>
       </div>
       <div className="text-[10px]">

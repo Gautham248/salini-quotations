@@ -193,7 +193,7 @@ function QuotationPDFDocument({
         <Text>Description of Goods / Service</Text>
       </View>
       <View style={[styles.headerCell, styles.colGst]}>
-        <Text>GST%</Text>
+        <Text>GST</Text>
       </View>
       <View style={[styles.headerCell, styles.colQty]}>
         <Text>Qty / Uom</Text>
@@ -218,7 +218,7 @@ function QuotationPDFDocument({
           <Text style={styles.companyName}>{cs.companyName}</Text>
           <Text style={styles.subheading}>{cs.subheading}</Text>
           <Text style={styles.contactLine}>
-            Ph: {cs.phone}  Mob: {cs.mobile}  Email: {cs.email}
+            Ph: {cs.phone}{cs.mobile ? `, Mob: ${cs.mobile}` : ""}{cs.email ? `, Email: ${cs.email}` : ""}
           </Text>
           <Text style={styles.gstin}>GSTIN: {cs.gstin}</Text>
         </View>
@@ -254,7 +254,7 @@ function QuotationPDFDocument({
               <Text style={styles.metaValue}>{q.quotNo}</Text>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Quot. Date:</Text>
+              <Text style={styles.metaLabel}>Date:</Text>
               <Text style={styles.metaValue}>
                 {q.quotDate ? formatDate(new Date(q.quotDate)) : ""}
               </Text>
@@ -316,7 +316,7 @@ function QuotationPDFDocument({
               { label: "CGST:", value: fmt(q.cgst) },
               { label: "SGST:", value: fmt(q.sgst) },
               { label: "Round Off:", value: fmt(q.roundOff) },
-              { label: "Net Amount:", value: q.netAmount.toFixed(2), bold: true },
+              { label: "Net Amount", value: q.netAmount.toFixed(2), bold: true },
             ].map((row, i) => (
               <View style={styles.tableRow} key={`total-${i}`}>
                 <View
@@ -344,8 +344,7 @@ function QuotationPDFDocument({
         </View>
 
         {/* ── Amount in Words ─────────────────────────────────── */}
-        <View style={[styles.footerRow, { marginBottom: 4 }]}>
-          <Text>E&amp;OE</Text>
+        <View style={[styles.footerRow, { justifyContent: "flex-end", marginBottom: 4 }]}>
           <Text style={styles.amountInWords}>{q.amountInWords}</Text>
         </View>
 

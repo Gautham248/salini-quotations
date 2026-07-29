@@ -42,12 +42,16 @@ function mapToCompanySettings(
   const cs = (s || {}) as Record<string, string>;
   return {
     companyName: cs.companyName || "SALINI TRADERS",
-    subheading: cs.subheading || "",
-    phone: cs.phone || "",
-    mobile: cs.mobile || "",
+    subheading:
+      cs.subheading ||
+      "Pala - Thodupuzha Road, Kanattupura, Pala, Kottayam",
+    phone: cs.phone || "+91 9539066366",
+    mobile: cs.mobile || "+91 9539088488",
     email: cs.email || "",
-    gstin: cs.gstin || "",
-    bankDetails: cs.bankDetails || "",
+    gstin: cs.gstin || "32AESFS0236G1Z3",
+    bankDetails:
+      cs.bankDetails ||
+      "State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661",
     disclaimerText:
       cs.disclaimerText ||
       "Certified that the particulars given above are true and correct.",
@@ -69,8 +73,6 @@ export async function generatePdf(
     cs: settings,
   }) as React.ReactElement;
 
-  // @react-pdf/renderer expects DocumentProps, but our custom component
-  // wraps Document internally and passes through additional props.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return await renderToBuffer(doc as any) as Buffer;
+  return (await renderToBuffer(doc as any)) as Buffer;
 }
