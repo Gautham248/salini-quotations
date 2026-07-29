@@ -170,6 +170,18 @@ async function syncToRemote() {
   `);
 
   await execRemote(`
+    CREATE TABLE IF NOT EXISTS "MasterItemUnit" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "masterItemId" INTEGER NOT NULL,
+      "unitId" INTEGER NOT NULL,
+      "conversionFactor" REAL NOT NULL DEFAULT 1.0,
+      CONSTRAINT "MasterItemUnit_masterItemId_fkey" FOREIGN KEY ("masterItemId") REFERENCES "MasterItem" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "MasterItemUnit_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "Unit" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    )
+  `);
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "MasterItemUnit_masterItemId_unitId_key" ON "MasterItemUnit"("masterItemId", "unitId")`);
+
+  await execRemote(`
     CREATE TABLE IF NOT EXISTS "Quotation" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       "storeId" INTEGER NOT NULL,
@@ -257,6 +269,7 @@ async function syncToRemote() {
   const itemCategories = (await localClient.execute(`SELECT * FROM "ItemCategory"`)).rows;
   const items = (await localClient.execute(`SELECT * FROM "MasterItem"`)).rows;
   const itemStoreRates = (await localClient.execute(`SELECT * FROM "ItemStoreRate"`)).rows;
+  const masterItemUnits = (await localClient.execute(`SELECT * FROM "MasterItemUnit"`)).rows;
   const quotations = (await localClient.execute(`SELECT * FROM "Quotation"`)).rows;
   const lineItems = (await localClient.execute(`SELECT * FROM "QuotationLineItem"`)).rows;
   const sequences = (await localClient.execute(`SELECT * FROM "StoreQuotSequence"`)).rows;
@@ -345,6 +358,14 @@ async function syncToRemote() {
       sql: `INSERT INTO "ItemStoreRate" (id, masterItemId, storeId, rate, updatedAt) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET rate=excluded.rate;`,
       args: [isr.id, isr.masterItemId, isr.storeId, isr.rate, isr.updatedAt],
+    });
+  }
+
+  for (const miu of masterItemUnits as any[]) {
+    await remote.execute({
+      sql: `INSERT INTO "MasterItemUnit" (id, masterItemId, unitId, conversionFactor) VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET conversionFactor=excluded.conversionFactor;`,
+      args: [miu.id, miu.masterItemId, miu.unitId, miu.conversionFactor],
     });
   }
 
