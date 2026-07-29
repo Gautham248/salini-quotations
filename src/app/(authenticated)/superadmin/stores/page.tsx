@@ -192,13 +192,59 @@ export default function StoresPage() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden shadow-sm">
+      {/* ── Mobile card list (hidden on sm+) ── */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">Loading...</p>
+        ) : stores.length === 0 ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">No stores yet.</p>
+        ) : stores.map((s) => (
+          <Card key={s.id} className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Store className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">{s.name}</p>
+                  <p className="text-[12px] text-muted-foreground">{s.slug}</p>
+                </div>
+              </div>
+              {s.isActive ? (
+                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px] flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />Active
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Inactive
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <Button variant="ghost" size="sm" className="flex-1 h-9" onClick={() => openEdit(s)}>
+                <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+              </Button>
+              {s.isActive ? (
+                <Button variant="outline" size="sm" onClick={() => setConfirmStore(s)}
+                  className="flex-1 h-9 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
+                  <Ban className="h-3.5 w-3.5 mr-1" /> Deactivate
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setConfirmStore(s)}
+                  className="flex-1 h-9 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 transition-colors">
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate
+                </Button>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="hidden sm:block overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Name</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Slug</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Status</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden sm:table-cell">Slug</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden sm:table-cell">Status</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -213,8 +259,8 @@ export default function StoresPage() {
                   <Store className="h-4 w-4 text-muted-foreground" />
                   {s.name}
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{s.slug}</TableCell>
-                <TableCell>
+                <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">{s.slug}</TableCell>
+                <TableCell className="hidden sm:table-cell">
                   {s.isActive ? (
                     <Badge
                       variant="outline"
@@ -267,10 +313,10 @@ export default function StoresPage() {
 
       {/* Create Store Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader><DialogTitle>Create New Store</DialogTitle></DialogHeader>
           <form onSubmit={createStore} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Store Name *</Label><Input value={name} onChange={e => setName(e.target.value)} required /></div>
               <div className="space-y-1"><Label>Slug *</Label><Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="url-friendly" required /></div>
               <div className="space-y-1"><Label>Company Name</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} /></div>
@@ -295,13 +341,13 @@ export default function StoresPage() {
 
       {/* Edit Store Dialog — full settings */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Store</DialogTitle></DialogHeader>
           {editFetching ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Loading store details...</div>
           ) : (
             <form onSubmit={saveEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1"><Label>Store Name *</Label><Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required /></div>
                 <div className="space-y-1"><Label>Slug *</Label><Input value={editForm.slug} onChange={e => setEditForm({ ...editForm, slug: e.target.value })} required /></div>
               </div>
@@ -309,7 +355,7 @@ export default function StoresPage() {
               <Separator />
               <p className="text-sm font-semibold">Company Settings</p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1"><Label>Company Name</Label><Input value={editForm.companyName} onChange={e => setEditForm({ ...editForm, companyName: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Address</Label><Input value={editForm.subheading} onChange={e => setEditForm({ ...editForm, subheading: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Phone</Label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>

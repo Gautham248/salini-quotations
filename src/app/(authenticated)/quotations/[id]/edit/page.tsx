@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   RotateCcw,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -31,6 +32,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScaledPreview } from "@/components/quotations/scaled-preview";
 
 export default function EditQuotationPage({
   params,
@@ -45,6 +53,7 @@ export default function EditQuotationPage({
   const [finalizing, setFinalizing] = useState(false);
   const [showDocLockDialog, setShowDocLockDialog] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const quote = useQuotation(parseInt(id));
 
@@ -134,15 +143,15 @@ export default function EditQuotationPage({
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex items-center justify-between bg-card px-4 py-3 rounded-lg border shadow-sm flex-wrap gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
           <div className="flex items-center gap-3">
             <Link href="/quotations">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[15px] font-semibold tracking-tight">
                   Edit Quotation
                 </h1>
@@ -176,7 +185,7 @@ export default function EditQuotationPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             {isAdmin && (
               <Button
                 variant={isDocumentLocked ? "destructive" : "outline"}
@@ -184,18 +193,14 @@ export default function EditQuotationPage({
                 onClick={() => setShowDocLockDialog(true)}
                 className={
                   isDocumentLocked
-                    ? "bg-amber-600 hover:bg-amber-700 text-white"
-                    : "border-amber-300 text-amber-800 hover:bg-amber-50"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto col-span-1"
+                    : "border-amber-300 text-amber-800 hover:bg-amber-50 w-full sm:w-auto col-span-1"
                 }
               >
                 {isDocumentLocked ? (
-                  <>
-                    <Lock className="h-3.5 w-3.5 mr-1.5" /> Locked
-                  </>
+                  <><Lock className="h-3.5 w-3.5 mr-1.5" /> Locked</>
                 ) : (
-                  <>
-                    <Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff
-                  </>
+                  <><Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff</>
                 )}
               </Button>
             )}
@@ -204,6 +209,7 @@ export default function EditQuotationPage({
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto col-span-1"
                 onClick={quote.manualSave}
                 disabled={quote.saving}
               >
@@ -213,13 +219,27 @@ export default function EditQuotationPage({
             )}
 
             {isAdmin && quote.status === "finalized" && (
-              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft}>
+              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="w-full sm:w-auto col-span-2 sm:col-span-1">
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Mark as Draft
               </Button>
             )}
 
+            {/* Mobile Preview & Download button */}
             {!isReadOnlyForStaff && (
-              <Button size="sm" onClick={finalize} disabled={finalizing}>
+              <Button
+                size="sm"
+                className="w-full sm:w-auto lg:hidden text-xs sm:text-sm col-span-2 sm:col-span-1"
+                onClick={() => setPreviewOpen(true)}
+                disabled={finalizing}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                <span>Preview &amp; Download</span>
+              </Button>
+            )}
+
+            {/* Desktop Finalize & Download button */}
+            {!isReadOnlyForStaff && (
+              <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
                 {finalizing ? (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 ) : quote.status === "finalized" ? (
@@ -279,8 +299,8 @@ export default function EditQuotationPage({
         </Card>
       </div>
 
-      {/* Right Pane: Preview */}
-      <div className="w-full lg:w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
+      {/* Right Pane: Preview — desktop only */}
+      <div className="hidden lg:block w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
             Live Preview
@@ -348,6 +368,41 @@ export default function EditQuotationPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Preview & Download Sheet */}
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="!p-0 px-6 pt-5 pb-4 border-b bg-muted/20">
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="text-base font-semibold shrink-0">
+                PDF Preview
+              </SheetTitle>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={finalize} disabled={finalizing} className="h-9 px-3.5 text-xs font-medium">
+                  {finalizing ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} className="h-9 px-3.5 text-xs font-medium">
+                  Close
+                </Button>
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="p-4 pb-12">
+            <ScaledPreview
+              header={quote.header}
+              lineItems={quote.lineItems}
+              totals={quote.totals}
+              storeSettings={storeSettings}
+              quotNo={quote.quotNo}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

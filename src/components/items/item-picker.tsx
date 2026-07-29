@@ -9,9 +9,10 @@ import {
 } from "@/components/ui/select";
 import {
   Plus, Search, ShoppingCart, X, Check, PackageOpen,
-  Tags, Trash2, ChevronRight, LayoutList,
+  Tags, Trash2, ChevronRight, LayoutList, EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { UnitHoverCard } from "./unit-hover-card";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -130,6 +131,7 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
   const [cart, setCart] = useState<Map<number, CartItem>>(new Map());
   const [loading, setLoading] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [showCartMobile, setShowCartMobile] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Load catalog and populate existing line items when modal opens
@@ -328,32 +330,48 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
       <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); else setOpen(true); }}>
         <DialogContent
           wide
-          className="max-w-[1250px] w-[96vw] h-[90vh] overflow-hidden rounded-2xl border bg-background shadow-2xl"
+          className="max-w-[1250px] w-[96vw] h-[90vh] md:h-[90vh] overflow-hidden rounded-2xl border bg-background shadow-2xl md:max-w-[1250px] md:w-[96vw] max-md:rounded-none max-md:max-w-none max-md:w-full max-md:h-[100dvh]"
           showCloseButton={false}
         >
           {/* ── Top Header Bar ── */}
-          <div className="flex items-center justify-between px-6 py-3.5 border-b bg-card flex-shrink-0">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-3.5 border-b bg-card flex-shrink-0">
+            <div className="flex items-center gap-2 md:gap-2.5">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <PackageOpen className="h-4 w-4 text-primary" />
               </div>
-              <div>
+              <div className="hidden md:block">
                 <DialogTitle className="text-base font-semibold">Select Items from Catalog</DialogTitle>
                 <p className="text-xs text-muted-foreground">Select master items, adjust quantities/rates, and add to quotation</p>
               </div>
+              <div className="md:hidden">
+                <DialogTitle className="text-sm font-semibold">Catalog</DialogTitle>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Mobile cart toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="md:hidden gap-1.5 h-8"
+                onClick={() => setShowCartMobile(!showCartMobile)}
+              >
+                <ShoppingCart className="h-3.5 w-3.5" />
+                {cart.size > 0 && <span className="text-[11px] font-bold">{cart.size}</span>}
+              </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={cart.size === 0 && !hasExistingLineItems}
                 size="sm"
-                className="gap-2 px-4 shadow-sm"
+                className="gap-2 px-3 md:px-4 shadow-sm text-xs md:text-sm"
               >
-                <Check className="h-4 w-4" />
-                {hasExistingLineItems
-                  ? cart.size > 0 ? `Update Quote (${cart.size})` : "Update Quote (Remove All)"
-                  : `Add to Quote ${cart.size > 0 ? `(${cart.size})` : ""}`}
+                <Check className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span className="hidden md:inline">
+                  {hasExistingLineItems
+                    ? cart.size > 0 ? `Update Quote (${cart.size})` : "Update Quote (Remove All)"
+                    : `Add to Quote ${cart.size > 0 ? `(${cart.size})` : ""}`}
+                </span>
+                <span className="md:hidden">{cart.size > 0 ? cart.size : "Add"}</span>
               </Button>
               <button
                 onClick={handleAttemptClose}
@@ -368,7 +386,7 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
           <div className="flex flex-1 min-h-0 divide-x overflow-hidden">
 
             {/* ─── PANE 1: Categories & Filters ──────────────────────────── */}
-            <aside className="w-56 flex-shrink-0 overflow-y-auto bg-muted/20 p-3 flex flex-col gap-2">
+            <aside className="w-56 flex-shrink-0 overflow-y-auto bg-muted/20 p-3 flex flex-col gap-2 hidden md:flex">
               <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Tags className="h-3.5 w-3.5" />Categories &amp; Filters
               </p>
@@ -502,7 +520,12 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
             </main>
 
             {/* ─── PANE 3: Quote Cart ────────────────────────────────── */}
-            <aside className="w-80 flex-shrink-0 flex flex-col bg-muted/10 overflow-hidden">
+            <aside className={cn(
+              "flex-shrink-0 flex flex-col bg-muted/10 overflow-hidden",
+              "md:w-80 md:relative",
+              "w-full absolute inset-0 z-10 bg-background",
+              showCartMobile ? "flex" : "hidden md:flex"
+            )}>
               {/* Cart header */}
               <div className="px-4 py-3 border-b bg-card flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
@@ -514,14 +537,24 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
                     </span>
                   )}
                 </div>
-                {cart.size > 0 && (
-                  <button
-                    onClick={() => setCart(new Map())}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                <div className="flex items-center gap-2">
+                  {cart.size > 0 && (
+                    <button
+                      onClick={() => setCart(new Map())}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden h-7 w-7"
+                    onClick={() => setShowCartMobile(false)}
                   >
-                    Clear all
-                  </button>
-                )}
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Cart items */}

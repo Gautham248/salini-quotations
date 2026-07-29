@@ -21,7 +21,7 @@ export default function SuperAdminPage() {
           Welcome, {session?.user?.name}. You have access to all stores.
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {links.map((l) => (
           <Link key={l.href} href={l.href}>
             <Card className="group hover:border-primary/30 hover:shadow-md transition-all duration-150 cursor-pointer h-full">
