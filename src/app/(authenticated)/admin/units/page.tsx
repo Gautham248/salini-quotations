@@ -97,7 +97,7 @@ export default function UnitsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">
             Units & Conversions
@@ -106,12 +106,12 @@ export default function UnitsPage() {
             {units.length} unit{units.length !== 1 ? "s" : ""} defined
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => setAddOpen(true)}>
+        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+          <Button size="sm" onClick={() => setAddOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-1.5" />
             Add Unit
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setConvOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setConvOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-1.5" />
             Add Conversion
           </Button>
