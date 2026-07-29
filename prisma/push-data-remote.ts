@@ -181,10 +181,16 @@ async function syncToRemote() {
   `);
   await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "MasterItemUnit_masterItemId_unitId_key" ON "MasterItemUnit"("masterItemId", "unitId")`);
 
-  await execRemote(`
-    CREATE TABLE IF NOT EXISTS "Quotation" (
+  // Check if remote Quotation table has legacy column-level UNIQUE on quotNo
+  const quotationTableSql =
+    ((await remote.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='Quotation'")).rows[0]?.sql as string) || "";
+
+  if (quotationTableSql.includes("quotNo TEXT UNIQUE") || quotationTableSql.includes("quotNo TEXT NOT NULL UNIQUE")) {
+    console.log("  🔄 Rebuilding remote Quotation table to convert quotNo UNIQUE to composite (storeId, quotNo) UNIQUE...");
+    await execRemote("PRAGMA foreign_keys = OFF;");
+    await execRemote(`CREATE TABLE IF NOT EXISTS "Quotation_new" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "storeId" INTEGER NOT NULL,
+      "storeId" INTEGER NOT NULL DEFAULT 1,
       "quotNo" TEXT NOT NULL,
       "refNo" TEXT NOT NULL,
       "quotDate" DATETIME NOT NULL,
@@ -209,8 +215,46 @@ async function syncToRemote() {
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL,
       "finalizedAt" DATETIME
-    )
-  `);
+    )`);
+
+    await execRemote(`INSERT OR IGNORE INTO "Quotation_new" (id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, isLocked, createdById, updatedById, createdAt, updatedAt, finalizedAt)
+      SELECT id, COALESCE(storeId, 1), quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, COALESCE(isLocked, 0), createdById, updatedById, createdAt, updatedAt, finalizedAt FROM "Quotation";`);
+
+    await execRemote(`DROP TABLE "Quotation";`);
+    await execRemote(`ALTER TABLE "Quotation_new" RENAME TO "Quotation";`);
+    await execRemote("PRAGMA foreign_keys = ON;");
+  } else {
+    await execRemote(`
+      CREATE TABLE IF NOT EXISTS "Quotation" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "storeId" INTEGER NOT NULL,
+        "quotNo" TEXT NOT NULL,
+        "refNo" TEXT NOT NULL,
+        "quotDate" DATETIME NOT NULL,
+        "status" TEXT NOT NULL,
+        "customerName" TEXT NOT NULL,
+        "customerAddress" TEXT,
+        "customerPlace" TEXT,
+        "customerGstin" TEXT,
+        "deliveryTerms" TEXT,
+        "gstNote" TEXT,
+        "validity" TEXT NOT NULL DEFAULT 'LIMITED',
+        "paymentTerms" TEXT NOT NULL DEFAULT 'READY PAYMENT',
+        "subTotal" REAL,
+        "cgst" REAL,
+        "sgst" REAL,
+        "roundOff" REAL,
+        "netAmount" REAL,
+        "amountInWords" TEXT,
+        "isLocked" BOOLEAN NOT NULL DEFAULT 0,
+        "createdById" INTEGER NOT NULL,
+        "updatedById" INTEGER,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL,
+        "finalizedAt" DATETIME
+      )
+    `);
+  }
 
   await ensureColumn("Quotation", "storeId", "INTEGER");
   await ensureColumn("Quotation", "isLocked", "INTEGER DEFAULT 0");
