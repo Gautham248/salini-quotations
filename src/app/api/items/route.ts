@@ -47,15 +47,18 @@ export async function GET(req: NextRequest) {
     orderBy: { description: "asc" },
   });
 
-  // Resolve effective rates if a store context is available
+  // Resolve effective rates in a single batch query if store context is available
   let resolvedItems = items;
   if (storeId) {
-    resolvedItems = await Promise.all(
-      items.map(async (item) => {
-        const effectiveRate = await getEffectiveRate(item.id, storeId);
-        return { ...item, rate: effectiveRate };
-      })
-    );
+    const storeRates = await db.itemStoreRate.findMany({
+      where: { storeId },
+      select: { masterItemId: true, rate: true },
+    });
+    const rateMap = new Map(storeRates.map((r) => [r.masterItemId, r.rate]));
+    resolvedItems = items.map((item) => ({
+      ...item,
+      rate: rateMap.get(item.id) ?? item.rate,
+    }));
   }
 
   const categories = await db.category.findMany({

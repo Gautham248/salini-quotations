@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { ItemForm, type ItemFormData } from "./item-form";
 import { CategoryManager } from "./category-manager";
 import { UnitHoverCard } from "./unit-hover-card";
+import { invalidateCatalogCache } from "./item-picker";
 import { Plus, Search, Pencil, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -121,12 +122,14 @@ export function ItemsTable() {
       });
       toast.success("Item added");
     }
+    invalidateCatalogCache();
     setEdit(null);
     fetchItems();
   }
 
   async function toggle(item: MasterItem) {
     await fetch(`/api/items/${item.id}`, { method: "PATCH" });
+    invalidateCatalogCache();
     toast.success(item.isActive ? "Item deactivated" : "Item reactivated");
     fetchItems();
   }
