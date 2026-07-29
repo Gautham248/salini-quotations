@@ -24,6 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ScaledPreview } from "@/components/quotations/scaled-preview";
 
 export default function ViewQuotationPage({
   params,
@@ -284,15 +285,13 @@ export default function ViewQuotationPage({
               </div>
             </div>
           </SheetHeader>
-          <div className="overflow-x-auto">
-            <div className="min-w-[595px] p-2">
-              <QuotationPreview
-                header={header}
-                lineItems={lineItems}
-                totals={totals}
-                quotNo={q.quotNo as string}
-              />
-            </div>
+          <div className="p-2">
+            <ScaledPreview
+              header={header}
+              lineItems={lineItems}
+              totals={totals}
+              quotNo={q.quotNo as string}
+            />
           </div>
         </SheetContent>
       </Sheet>

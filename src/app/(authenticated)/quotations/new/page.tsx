@@ -14,6 +14,7 @@ import { Save, FileDown, Loader2, FileText, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
+import { ScaledPreview } from "@/components/quotations/scaled-preview";
 import {
   Sheet,
   SheetContent,
@@ -227,9 +228,8 @@ function NewQuotationContent() {
               </div>
             </div>
           </SheetHeader>
-          <div className="overflow-x-auto">
-            <div className="min-w-[595px] p-2">
-              <QuotationPreview
+          <div className="p-2">
+              <ScaledPreview
                 header={quote.header}
                 lineItems={quote.lineItems}
                 totals={quote.totals}
@@ -237,7 +237,6 @@ function NewQuotationContent() {
                 quotNo={quote.quotNo}
               />
             </div>
-          </div>
         </SheetContent>
       </Sheet>
     </>
