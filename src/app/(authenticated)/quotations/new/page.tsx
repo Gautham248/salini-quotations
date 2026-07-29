@@ -221,11 +221,11 @@ function NewQuotationContent() {
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
         <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-3xl border-t shadow-2xl bg-background">
           {/* Top handle pill */}
-          <div className="pt-3 pb-1 flex justify-center">
-            <div className="w-12 h-1.5 rounded-full bg-border/80" />
+          <div className="pt-2 pb-0.5 flex justify-center">
+            <div className="w-10 h-1 rounded-full bg-border/80" />
           </div>
 
-          <SheetHeader className="px-6 pt-2 pb-4 border-b space-y-0 text-left bg-muted/30">
+          <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
                 <FileText className="h-4.5 w-4.5 text-primary shrink-0" />

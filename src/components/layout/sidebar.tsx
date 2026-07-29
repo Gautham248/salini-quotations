@@ -221,11 +221,11 @@ export function Sidebar() {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" showCloseButton={false} className="bg-sidebar text-sidebar-foreground border-sidebar-border rounded-t-3xl max-h-[85vh] overflow-y-auto p-0 shadow-2xl">
           {/* Top handle pill */}
-          <div className="pt-3 pb-1 flex justify-center">
-            <div className="w-12 h-1.5 rounded-full bg-sidebar-border/80" />
+          <div className="pt-2 pb-0.5 flex justify-center">
+            <div className="w-10 h-1 rounded-full bg-sidebar-border/80" />
           </div>
 
-          <SheetHeader className="px-6 pt-2 pb-4 border-b border-sidebar-border space-y-0 text-left">
+          <SheetHeader className="px-5 pt-1 pb-3 border-b border-sidebar-border space-y-0 text-left">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm border border-primary/30 shrink-0">
