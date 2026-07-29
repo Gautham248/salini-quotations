@@ -112,14 +112,14 @@ function QuotationsContent() {
         <Select
           value={filterStoreId}
           onValueChange={v => setFilterStoreId(v ?? "all")}
+          items={{
+            all: "All Stores",
+            ...Object.fromEntries(stores.map(s => [String(s.id), s.name]))
+          }}
         >
           <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
             <span className="text-muted-foreground font-medium mr-1">Store:</span>
-            <SelectValue>
-              {filterStoreId === "all"
-                ? "All Stores"
-                : stores.find(s => String(s.id) === filterStoreId)?.name || "All Stores"}
-            </SelectValue>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stores</SelectItem>
@@ -130,14 +130,17 @@ function QuotationsContent() {
         <Select
           value={filterStatus}
           onValueChange={v => setFilterStatus(v ?? "all")}
+          items={{
+            all: "All Statuses",
+            draft: "Draft",
+            finalized: "Finalized",
+            locked: "Locked",
+            archived: "Archived",
+          }}
         >
           <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
             <span className="text-muted-foreground font-medium mr-1">Status:</span>
-            <SelectValue>
-              {filterStatus === "all"
-                ? "All Statuses"
-                : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
-            </SelectValue>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
@@ -151,20 +154,16 @@ function QuotationsContent() {
         <Select
           value={filterPeriod}
           onValueChange={v => setFilterPeriod(v ?? "all")}
+          items={{
+            all: "All Time",
+            "24h": "Last 24 Hours",
+            "7d": "Last 7 Days",
+            "30d": "Last 30 Days",
+          }}
         >
           <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
             <span className="text-muted-foreground font-medium mr-1">Period:</span>
-            <SelectValue>
-              {filterPeriod === "all"
-                ? "All Time"
-                : filterPeriod === "24h"
-                ? "Last 24 Hours"
-                : filterPeriod === "7d"
-                ? "Last 7 Days"
-                : filterPeriod === "30d"
-                ? "Last 30 Days"
-                : "All Time"}
-            </SelectValue>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Time</SelectItem>
