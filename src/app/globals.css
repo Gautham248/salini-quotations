@@ -53,6 +53,15 @@
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background text-foreground antialiased; }
   html { @apply font-sans; }
+
+  /* Prevent iOS Safari / WebKit auto-zooming into input fields on mobile (< 768px) */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 :root {
