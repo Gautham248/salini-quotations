@@ -288,109 +288,96 @@ async function syncToRemote() {
 
   for (const s of stores as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "Store" (id, name, slug, isActive, createdAt) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET name=excluded.name, slug=excluded.slug, isActive=excluded.isActive;`,
+      sql: `INSERT OR REPLACE INTO "Store" (id, name, slug, isActive, createdAt) VALUES (?, ?, ?, ?, ?);`,
       args: [s.id, s.name, s.slug, s.isActive, s.createdAt],
     });
   }
 
   for (const u of users as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "User" (id, username, passwordHash, role, storeId, isActive, forcePasswordChange, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET username=excluded.username, role=excluded.role, storeId=excluded.storeId, isActive=excluded.isActive, forcePasswordChange=excluded.forcePasswordChange;`,
+      sql: `INSERT OR REPLACE INTO "User" (id, username, passwordHash, role, storeId, isActive, forcePasswordChange, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [u.id, u.username, u.passwordHash, u.role, u.storeId, u.isActive, u.forcePasswordChange, u.createdAt],
     });
   }
 
   for (const cs of settings as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "CompanySettings" (id, storeId, companyName, subheading, phone, mobile, email, gstin, bankDetails, disclaimerText, loadingNote, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET companyName=excluded.companyName, subheading=excluded.subheading, phone=excluded.phone, mobile=excluded.mobile, email=excluded.email, gstin=excluded.gstin, bankDetails=excluded.bankDetails;`,
+      sql: `INSERT OR REPLACE INTO "CompanySettings" (id, storeId, companyName, subheading, phone, mobile, email, gstin, bankDetails, disclaimerText, loadingNote, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [cs.id, cs.storeId, cs.companyName, cs.subheading, cs.phone, cs.mobile, cs.email, cs.gstin, cs.bankDetails, cs.disclaimerText, cs.loadingNote, cs.updatedAt],
     });
   }
 
   for (const un of units as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "Unit" (id, name, isActive, createdById, createdAt) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET name=excluded.name, isActive=excluded.isActive;`,
+      sql: `INSERT OR REPLACE INTO "Unit" (id, name, isActive, createdById, createdAt) VALUES (?, ?, ?, ?, ?);`,
       args: [un.id, un.name, un.isActive, un.createdById, un.createdAt],
     });
   }
 
   for (const uc of conversions as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "UnitConversion" (id, fromUnitId, toUnitId, factor) VALUES (?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET factor=excluded.factor;`,
+      sql: `INSERT OR REPLACE INTO "UnitConversion" (id, fromUnitId, toUnitId, factor) VALUES (?, ?, ?, ?);`,
       args: [uc.id, uc.fromUnitId, uc.toUnitId, uc.factor],
     });
   }
 
   for (const cat of categories as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "Category" (id, name, createdAt) VALUES (?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET name=excluded.name;`,
+      sql: `INSERT OR REPLACE INTO "Category" (id, name, createdAt) VALUES (?, ?, ?);`,
       args: [cat.id, cat.name, cat.createdAt],
     });
   }
 
   for (const item of items as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "MasterItem" (id, description, unitId, rate, gstPercent, weightPerUnit, piecesPerUnit, isActive, createdById, updatedById, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET description=excluded.description, unitId=excluded.unitId, rate=excluded.rate, gstPercent=excluded.gstPercent;`,
+      sql: `INSERT OR REPLACE INTO "MasterItem" (id, description, unitId, rate, gstPercent, weightPerUnit, piecesPerUnit, isActive, createdById, updatedById, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [item.id, item.description, item.unitId, item.rate, item.gstPercent, item.weightPerUnit, item.piecesPerUnit, item.isActive, item.createdById, item.updatedById, item.createdAt, item.updatedAt],
     });
   }
 
   for (const ic of itemCategories as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "ItemCategory" (itemId, categoryId) VALUES (?, ?)
-            ON CONFLICT(itemId, categoryId) DO NOTHING;`,
+      sql: `INSERT OR IGNORE INTO "ItemCategory" (itemId, categoryId) VALUES (?, ?);`,
       args: [ic.itemId, ic.categoryId],
     });
   }
 
   for (const isr of itemStoreRates as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "ItemStoreRate" (id, masterItemId, storeId, rate, updatedAt) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET rate=excluded.rate;`,
+      sql: `INSERT OR REPLACE INTO "ItemStoreRate" (id, masterItemId, storeId, rate, updatedAt) VALUES (?, ?, ?, ?, ?);`,
       args: [isr.id, isr.masterItemId, isr.storeId, isr.rate, isr.updatedAt],
     });
   }
 
   for (const miu of masterItemUnits as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "MasterItemUnit" (id, masterItemId, unitId, conversionFactor) VALUES (?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET conversionFactor=excluded.conversionFactor;`,
+      sql: `INSERT OR REPLACE INTO "MasterItemUnit" (id, masterItemId, unitId, conversionFactor) VALUES (?, ?, ?, ?);`,
       args: [miu.id, miu.masterItemId, miu.unitId, miu.conversionFactor],
     });
   }
 
   for (const q of quotations as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "Quotation" (id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, isLocked, createdById, updatedById, createdAt, updatedAt, finalizedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET status=excluded.status, netAmount=excluded.netAmount, isLocked=excluded.isLocked;`,
+      sql: `INSERT OR REPLACE INTO "Quotation" (id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, isLocked, createdById, updatedById, createdAt, updatedAt, finalizedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [q.id, q.storeId, q.quotNo, q.refNo, q.quotDate, q.status, q.customerName, q.customerAddress, q.customerPlace, q.customerGstin, q.deliveryTerms, q.gstNote, q.validity, q.paymentTerms, q.subTotal, q.cgst, q.sgst, q.roundOff, q.netAmount, q.amountInWords, q.isLocked, q.createdById, q.updatedById, q.createdAt, q.updatedAt, q.finalizedAt],
     });
   }
 
   for (const li of lineItems as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "QuotationLineItem" (id, quotationId, masterItemId, lineNo, description, unit, rate, gstPercent, qty, netValue, quoteMode, weightKg, pieceCount, isLocked)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET qty=excluded.qty, netValue=excluded.netValue, isLocked=excluded.isLocked;`,
+      sql: `INSERT OR REPLACE INTO "QuotationLineItem" (id, quotationId, masterItemId, lineNo, description, unit, rate, gstPercent, qty, netValue, quoteMode, weightKg, pieceCount, isLocked)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [li.id, li.quotationId, li.masterItemId, li.lineNo, li.description, li.unit, li.rate, li.gstPercent, li.qty, li.netValue, li.quoteMode, li.weightKg, li.pieceCount, li.isLocked],
     });
   }
 
   for (const seq of sequences as any[]) {
     await remote.execute({
-      sql: `INSERT INTO "StoreQuotSequence" (id, storeId, lastNumber) VALUES (?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET lastNumber=excluded.lastNumber;`,
+      sql: `INSERT OR REPLACE INTO "StoreQuotSequence" (id, storeId, lastNumber) VALUES (?, ?, ?);`,
       args: [seq.id, seq.storeId, seq.lastNumber],
     });
   }
