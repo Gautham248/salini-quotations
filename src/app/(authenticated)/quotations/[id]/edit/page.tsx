@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   RotateCcw,
   Eye,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -371,14 +372,22 @@ export default function EditQuotationPage({
 
       {/* Mobile Preview & Download Sheet */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
-          <SheetHeader className="!p-0 px-6 pt-5 pb-4 border-b bg-muted/20">
+        <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-3xl border-t shadow-2xl bg-background">
+          {/* Top handle pill */}
+          <div className="pt-3 pb-1 flex justify-center">
+            <div className="w-12 h-1.5 rounded-full bg-border/80" />
+          </div>
+
+          <SheetHeader className="px-6 pt-2 pb-4 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
-              <SheetTitle className="text-base font-semibold shrink-0">
-                PDF Preview
-              </SheetTitle>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <SheetTitle className="text-base font-semibold tracking-tight leading-none">
+                  PDF Preview
+                </SheetTitle>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" onClick={finalize} disabled={finalizing} className="h-9 px-3.5 text-xs font-medium">
+                <Button size="sm" onClick={finalize} disabled={finalizing} className="h-9 px-4 text-xs font-semibold shadow-xs">
                   {finalizing ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   ) : (
@@ -392,7 +401,7 @@ export default function EditQuotationPage({
               </div>
             </div>
           </SheetHeader>
-          <div className="p-4 pb-12">
+          <div className="p-4 sm:p-6 pb-12">
             <ScaledPreview
               header={quote.header}
               lineItems={quote.lineItems}
