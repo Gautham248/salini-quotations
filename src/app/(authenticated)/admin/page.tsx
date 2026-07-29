@@ -97,7 +97,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {links.map((l) => (
           <Link key={l.href} href={l.href}>
             <Card className="group hover:border-primary/30 hover:shadow-md transition-all duration-150 cursor-pointer h-full">
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground py-4">Loading settings...</p>
             ) : (
               <form onSubmit={save} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Company Name</Label>
                 <Input

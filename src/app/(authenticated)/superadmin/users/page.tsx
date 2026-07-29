@@ -187,9 +187,9 @@ function UsersContent() {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Username</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Store</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden sm:table-cell">Store</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Role</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Status</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden sm:table-cell">Status</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -208,7 +208,7 @@ function UsersContent() {
                       {isSelf && <Badge variant="outline" className="text-[10px] py-0 px-1.5">You</Badge>}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">{storeName(u.storeId)}</TableCell>
+                  <TableCell className="text-sm hidden sm:table-cell">{storeName(u.storeId)}</TableCell>
                   <TableCell>
                     <Select
                       value={u.role}
@@ -225,7 +225,7 @@ function UsersContent() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {u.isActive ? (
                       <Badge
                         variant="outline"

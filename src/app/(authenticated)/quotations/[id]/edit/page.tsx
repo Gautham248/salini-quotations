@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   RotateCcw,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -31,6 +32,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export default function EditQuotationPage({
   params,
@@ -45,6 +52,7 @@ export default function EditQuotationPage({
   const [finalizing, setFinalizing] = useState(false);
   const [showDocLockDialog, setShowDocLockDialog] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const quote = useQuotation(parseInt(id));
 
@@ -189,13 +197,9 @@ export default function EditQuotationPage({
                 }
               >
                 {isDocumentLocked ? (
-                  <>
-                    <Lock className="h-3.5 w-3.5 mr-1.5" /> Locked
-                  </>
+                  <><Lock className="h-3.5 w-3.5 mr-1.5" /> Locked</>
                 ) : (
-                  <>
-                    <Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff
-                  </>
+                  <><Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff</>
                 )}
               </Button>
             )}
@@ -218,8 +222,22 @@ export default function EditQuotationPage({
               </Button>
             )}
 
+            {/* Mobile Preview & Download button */}
             {!isReadOnlyForStaff && (
-              <Button size="sm" onClick={finalize} disabled={finalizing}>
+              <Button
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setPreviewOpen(true)}
+                disabled={finalizing}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                {quote.status === "finalized" ? "Preview & Re-Finalize" : "Preview & Download"}
+              </Button>
+            )}
+
+            {/* Desktop Finalize & Download button */}
+            {!isReadOnlyForStaff && (
+              <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
                 {finalizing ? (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 ) : quote.status === "finalized" ? (
@@ -279,8 +297,8 @@ export default function EditQuotationPage({
         </Card>
       </div>
 
-      {/* Right Pane: Preview */}
-      <div className="w-full lg:w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
+      {/* Right Pane: Preview — desktop only */}
+      <div className="hidden lg:block w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
             Live Preview
@@ -348,6 +366,39 @@ export default function EditQuotationPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Preview & Download Sheet */}
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="!p-0 px-4 pt-4 pb-3 border-b sticky top-0 bg-background z-10">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-base font-semibold">Live Preview</SheetTitle>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => { setPreviewOpen(false); finalize(); }}
+                  disabled={finalizing}
+                >
+                  {finalizing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1.5" />}
+                  {quote.status === "finalized" ? "Re-Finalize" : "Finalize & Download"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)}>Close</Button>
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="overflow-x-auto">
+            <div className="min-w-[595px] p-2">
+              <QuotationPreview
+                header={quote.header}
+                lineItems={quote.lineItems}
+                totals={quote.totals}
+                storeSettings={storeSettings}
+                quotNo={quote.quotNo}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -20,6 +21,7 @@ import {
   Lock,
   Unlock,
   ShieldAlert,
+  Pencil,
 } from "lucide-react";
 import { type LineItem } from "@/hooks/use-quotation";
 import {
@@ -30,6 +32,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +68,7 @@ export function QuotationLineItems({
     item: LineItem;
     targetLockState: boolean;
   } | null>(null);
+  const [editingItem, setEditingItem] = useState<LineItem | null>(null);
 
   const confirmLockToggle = () => {
     if (!lockingItem) return;
@@ -142,7 +151,63 @@ export function QuotationLineItems({
         )}
       </div>
 
-      <div className="border rounded-md overflow-hidden bg-card">
+      {/* ── Mobile card list (hidden on md+) ── */}
+      <div className="md:hidden space-y-2">
+        {lineItems.length === 0 ? (
+          <p className="text-center py-8 text-sm text-muted-foreground">No items yet.</p>
+        ) : (
+          lineItems.map((item, idx) => {
+            const isItemLocked = Boolean(item.isLocked);
+            const isFieldDisabled = readOnly || (!isAdmin && isItemLocked);
+            return (
+              <div
+                key={item.key}
+                className={cn(
+                  "border rounded-lg p-3 bg-card",
+                  isItemLocked && !isAdmin && "bg-amber-500/5 border-amber-500/20"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-mono text-muted-foreground">{idx + 1}.</span>
+                      {isItemLocked && <Lock className="h-3 w-3 text-amber-600 shrink-0" />}
+                      <p className="text-sm font-medium truncate">{item.description || <span className="text-muted-foreground italic">Untitled item</span>}</p>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground mt-0.5">
+                      {item.unit} · ₹{item.rate.toFixed(2)} · Qty {item.qty}
+                      {item.weightKg != null ? ` · ${item.weightKg} Kg` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <span className="text-sm font-semibold tabular-nums">₹{item.netValue.toFixed(2)}</span>
+                    {!readOnly && !isFieldDisabled && (
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8 ml-1"
+                        onClick={() => setEditingItem(item)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {!readOnly && !isFieldDisabled && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => onRemove(item.key)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden below md) ── */}
+      <div className="hidden md:block border rounded-md overflow-hidden bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -405,6 +470,131 @@ export function QuotationLineItems({
           </TableBody>
         </Table>
       </div>
+
+      {/* ── Mobile per-item edit sheet ── */}
+      <Sheet open={editingItem !== null} onOpenChange={open => !open && setEditingItem(null)}>
+        <SheetContent side="bottom" showCloseButton={false} className="p-0 rounded-t-2xl max-h-[90vh] overflow-y-auto">
+          <SheetHeader className="!p-0 px-4 pt-4 pb-3 border-b">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-base font-semibold">
+                {editingItem ? (editingItem.description || "Edit Item") : "Edit Item"}
+              </SheetTitle>
+              <Button variant="outline" size="sm" onClick={() => setEditingItem(null)}>Done</Button>
+            </div>
+          </SheetHeader>
+          {editingItem && (() => {
+            const item = editingItem;
+            const isItemLocked = Boolean(item.isLocked);
+            const isFieldDisabled = readOnly || (!isAdmin && isItemLocked);
+            const hasWeight = !!item.weightPerUnit && item.weightPerUnit > 0;
+            const hasPieces = !!item.piecesPerUnit && item.piecesPerUnit > 0;
+            const upd = (f: keyof LineItem, v: string | number | boolean | null) => {
+              onUpdate(item.key, f, v);
+              setEditingItem(prev => prev ? { ...prev, [f]: v } : prev);
+            };
+            return (
+              <div className="p-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Description</Label>
+                  <Input
+                    value={item.description}
+                    disabled={isFieldDisabled}
+                    onChange={e => upd("description", e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Qty</Label>
+                    <Input
+                      type="number" step="0.01" min="0"
+                      value={item.qty ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("qty", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                      className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Unit</Label>
+                    <Input
+                      value={item.unit}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("unit", e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Rate (₹)</Label>
+                    <Input
+                      type="number" step="0.01" min="0"
+                      value={item.rate ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("rate", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                      className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">GST %</Label>
+                    <Input
+                      type="number" step="0.01"
+                      value={item.gstPercent ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("gstPercent", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                      className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Weight (Kg)</Label>
+                    <Input
+                      type="number" step="0.001" min="0" placeholder="—"
+                      value={item.weightKg ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("weightKg", e.target.value === "" ? null : parseFloat(e.target.value))}
+                      className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  {(hasWeight || hasPieces) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Mode</Label>
+                      <select
+                        value={item.quoteMode}
+                        disabled={isFieldDisabled}
+                        onChange={e => upd("quoteMode", e.target.value)}
+                        className="h-9 w-full text-sm border rounded px-2 disabled:opacity-50"
+                      >
+                        <option value="quantity">Qty</option>
+                        {hasWeight && <option value="weight">Weight</option>}
+                        {hasPieces && <option value="pieces">Pieces</option>}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-2 border-t flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Net Value: </span>
+                    <span className="font-semibold">₹{item.netValue.toFixed(2)}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMove(item.key, "up")}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMove(item.key, "down")}>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => { onRemove(item.key); setEditingItem(null); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
 
       {/* Lock / Unlock Confirmation Dialog */}
       <Dialog open={lockingItem !== null} onOpenChange={open => !open && setLockingItem(null)}>

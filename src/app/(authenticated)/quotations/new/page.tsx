@@ -10,10 +10,16 @@ import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import { StorePicker } from "@/components/ui/store-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Save, FileDown, Loader2, FileText } from "lucide-react";
+import { Save, FileDown, Loader2, FileText, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export default function NewQuotationPage() {
   return (
@@ -33,6 +39,7 @@ function NewQuotationContent() {
   const { data: session } = useSession();
   const [finalizing, setFinalizing] = useState(false);
   const [storeSettings, setStoreSettings] = useState<StorePreviewSettings | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const isSuperadmin = session?.user?.role === "superadmin";
   const storeIdParam = searchParams.get("storeId");
@@ -97,6 +104,7 @@ function NewQuotationContent() {
     );
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row gap-6 pb-16">
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
@@ -130,7 +138,18 @@ function NewQuotationContent() {
               <Save className="h-3.5 w-3.5 mr-1.5" />
               Save Draft
             </Button>
-            <Button size="sm" onClick={finalize} disabled={finalizing}>
+            {/* Mobile Preview & Download */}
+            <Button
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setPreviewOpen(true)}
+              disabled={finalizing}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
+              Preview &amp; Download
+            </Button>
+            {/* Desktop Generate PDF */}
+            <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
               {finalizing ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
               ) : (
@@ -170,8 +189,8 @@ function NewQuotationContent() {
         </Card>
       </div>
 
-      {/* Right Pane: Preview */}
-      <div className="w-full lg:w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
+      {/* Right Pane: Preview — desktop only */}
+      <div className="hidden lg:block w-[460px] xl:w-[500px] shrink-0 lg:sticky lg:top-6 self-start space-y-2">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
             Live Preview
@@ -188,5 +207,39 @@ function NewQuotationContent() {
         </div>
       </div>
     </div>
+
+      {/* Mobile Preview & Download Sheet */}
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent side="bottom" showCloseButton={false} className="p-0 max-h-[92vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="!p-0 px-4 pt-4 pb-3 border-b sticky top-0 bg-background z-10">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-base font-semibold">PDF Preview</SheetTitle>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => { setPreviewOpen(false); finalize(); }}
+                  disabled={finalizing}
+                >
+                  {finalizing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1.5" />}
+                  Generate PDF
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)}>Close</Button>
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="overflow-x-auto">
+            <div className="min-w-[595px] p-2">
+              <QuotationPreview
+                header={quote.header}
+                lineItems={quote.lineItems}
+                totals={quote.totals}
+                storeSettings={storeSettings}
+                quotNo={quote.quotNo}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

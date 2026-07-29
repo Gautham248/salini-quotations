@@ -190,7 +190,7 @@ export function ItemsTable() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2.5">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -200,63 +200,121 @@ export function ItemsTable() {
             className="pl-9"
           />
         </div>
-        <Select
-          value={cf}
-          onValueChange={(v) => setCf(v ?? "all")}
-          items={{
-            all: "All Categories",
-            ...Object.fromEntries(categories.map(c => [String(c.id), `${c.name} (${c._count.items})`]))
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name} ({c._count.items})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSi(!si)}
-          className="shrink-0"
-        >
-          {si ? "Hide Inactive" : "Show Inactive"}
-        </Button>
+        <div className="flex gap-2">
+          <Select
+            value={cf}
+            onValueChange={(v) => setCf(v ?? "all")}
+            items={{
+              all: "All Categories",
+              ...Object.fromEntries(categories.map(c => [String(c.id), `${c.name} (${c._count.items})`]))
+            }}
+          >
+            <SelectTrigger className="flex-1 sm:w-[180px]">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name} ({c._count.items})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSi(!si)}
+            className="shrink-0"
+          >
+            {si ? "Hide Inactive" : "Show Inactive"}
+          </Button>
+        </div>
       </div>
 
-      {/* Table */}
-      <Card className="overflow-hidden shadow-sm">
+      {/* ── Mobile card list (hidden on sm+) ── */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">Loading items...</p>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted-foreground">No items found.</p>
+            {canEdit && (
+              <button onClick={() => { setEdit(null); setFormOpen(true); }} className="text-[13px] text-primary hover:underline mt-1">
+                Add your first item
+              </button>
+            )}
+          </div>
+        ) : (
+          items.map((i) => (
+            <Card key={i.id} className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm leading-snug">{i.description}</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
+                    {i.unit?.name} · ₹{i.rate.toFixed(2)} ({i.gstPercent}%)
+                  </p>
+                  {i.categories.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {i.categories.slice(0, 2).map((c) => (
+                        <Badge key={c.category.id} variant="secondary" className="text-[10px] py-0">{c.category.name}</Badge>
+                      ))}
+                      {i.categories.length > 2 && <span className="text-[11px] text-muted-foreground">+{i.categories.length - 2}</span>}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {i.isActive ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1" />Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mr-1" />Inactive
+                    </Badge>
+                  )}
+                  {canEdit && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEdit(i)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Switch checked={i.isActive} onCheckedChange={() => toggle(i)} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden below sm) ── */}
+      <Card className="hidden sm:block overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-border hover:bg-transparent">
               <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Description
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                 Unit
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider text-right">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider text-right hidden sm:table-cell">
                 Rate (GST%)
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                 Wt/Unit
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                 Categories
               </TableHead>
               <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Active
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                 Created By
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                 Updated By
               </TableHead>
             </TableRow>
@@ -296,9 +354,16 @@ export function ItemsTable() {
                   className="hover:bg-muted/50"
                 >
                   <TableCell className="font-medium text-sm">
-                    {i.description}
+                    <div className="flex flex-col">
+                      <span>{i.description}</span>
+                      <span className="sm:hidden text-[11px] text-muted-foreground mt-0.5">
+                        {i.unit?.name}
+                        {i.alternateUnits?.length ? ` +${i.alternateUnits.length}` : ""}
+                        {" · "}₹{i.rate.toFixed(2)} ({i.gstPercent}%)
+                      </span>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm hidden sm:table-cell">
                     <UnitHoverCard
                       primaryUnit={i.unit}
                       alternateUnits={i.alternateUnits}
@@ -306,18 +371,18 @@ export function ItemsTable() {
                       description={i.description}
                     />
                   </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
+                  <TableCell className="text-right text-sm tabular-nums hidden sm:table-cell">
                     &#8377;{i.rate.toFixed(2)}{" "}
                     <span className="text-muted-foreground">
                       ({i.gstPercent}%)
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm hidden md:table-cell">
                     {i.weightPerUnit != null
                       ? `${i.weightPerUnit} kg`
                       : "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {i.categories.length === 0 ? (
                       <span className="text-xs text-muted-foreground">
                         —
@@ -365,10 +430,10 @@ export function ItemsTable() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground hidden md:table-cell">
                     {i.createdBy?.username || "—"}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground hidden md:table-cell">
                     {i.updatedBy?.username || "—"}
                   </TableCell>
                   {canEdit && (

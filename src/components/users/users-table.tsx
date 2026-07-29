@@ -182,7 +182,78 @@ export function UsersTable() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden shadow-sm">
+      {/* ── Mobile card list (hidden on sm+) ── */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">Loading users...</p>
+        ) : users.length === 0 ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">No users found.</p>
+        ) : (
+          users.map((u) => {
+            const isSelf =
+              (currentUserId && u.id === currentUserId) ||
+              u.username === currentUsername;
+            return (
+              <Card key={u.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{u.username}</span>
+                    {isSelf && <Badge variant="outline" className="text-[10px] py-0 px-1.5">You</Badge>}
+                  </div>
+                  {u.isActive ? (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px] flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Inactive
+                    </Badge>
+                  )}
+                </div>
+                <Select
+                  value={u.role}
+                  onValueChange={(v) => roleChange(u, v ?? "staff")}
+                  disabled={Boolean(isSelf)}
+                  items={{ superadmin: "Super Admin", admin: "Admin", manager: "Manager", staff: "Staff" }}
+                >
+                  <SelectTrigger className="w-full h-9 text-[13px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost" size="icon" className="h-9 w-9"
+                    onClick={() => { setResetUser(u); setNewPassword(""); }}
+                    title="Change Password"
+                  >
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <div className="flex-1">
+                    {u.isActive ? (
+                      <Button variant="outline" size="sm" disabled={Boolean(isSelf)} onClick={() => toggle(u)}
+                        className="w-full h-9 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
+                        <UserX className="h-3.5 w-3.5 mr-1" /> Deactivate
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" disabled={Boolean(isSelf)} onClick={() => toggle(u)}
+                        className="w-full h-9 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 transition-colors">
+                        <UserCheck className="h-3.5 w-3.5 mr-1" /> Activate
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      <Card className="hidden sm:block overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -192,7 +263,7 @@ export function UsersTable() {
               <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Role
               </TableHead>
-              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                 Status
               </TableHead>
               <TableHead className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider text-right">
@@ -260,7 +331,7 @@ export function UsersTable() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {u.isActive ? (
                         <Badge
                           variant="outline"

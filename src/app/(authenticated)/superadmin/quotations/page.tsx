@@ -86,11 +86,15 @@ function QuotationsContent() {
           <p className="text-[13px] text-muted-foreground mt-0.5">{quotations.length} quotation{quotations.length !== 1 ? "s" : ""} total</p>
         </div>
         <Link href="/quotations/new">
-          <Button size="sm"><Plus className="h-4 w-4 mr-1.5" /> New Quotation</Button>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-1.5" />
+            <span className="hidden xs:inline">New Quotation</span>
+            <span className="xs:hidden">New</span>
+          </Button>
         </Link>
       </div>
 
-      <div className="flex gap-2.5">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search by customer or quote number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -103,7 +107,7 @@ function QuotationsContent() {
             ...Object.fromEntries(stores.map(s => [String(s.id), s.name]))
           }}
         >
-          <SelectTrigger className="w-40"><SelectValue placeholder="All stores" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="All stores" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stores</SelectItem>
             {stores.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
@@ -111,18 +115,61 @@ function QuotationsContent() {
         </Select>
       </div>
 
-      <Card className="overflow-hidden shadow-sm">
+      {/* ── Mobile card list (hidden on sm+) ── */}
+      <div className="sm:hidden space-y-2">
+        {loading ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">Loading quotations...</p>
+        ) : quotations.length === 0 ? (
+          <p className="text-center py-12 text-sm text-muted-foreground">No quotations found.</p>
+        ) : (
+          quotations.map(q => (
+            <Card key={q.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-sm">{q.quotNo}</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
+                    {new Date(q.quotDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    {q.store?.name ? ` · ${q.store.name}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+                  <Badge variant={q.status === "finalized" ? "default" : "secondary"} className="capitalize text-[11px]">{q.status}</Badge>
+                  {q.isLocked && <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1"><Lock className="h-3 w-3" /></Badge>}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{q.customerName}</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    {q.netAmount != null ? `₹${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+                    {q.createdBy?.username ? ` · ${q.createdBy.username}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Link href={`/quotations/${q.id}`}><Button variant="ghost" size="icon" className="h-9 w-9"><Eye className="h-4 w-4" /></Button></Link>
+                  <Link href={`/quotations/${q.id}/edit`}><Button variant="ghost" size="icon" className="h-9 w-9"><Pencil className="h-4 w-4" /></Button></Link>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => duplicate(q.id)}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 hover:text-destructive" onClick={() => setDeleteId(q.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden below sm) ── */}
+      <Card className="hidden sm:block overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Quote #</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Date</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Date</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Customer</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Store</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Amount</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Created By</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Last Edited</TableHead>
-              <TableHead className="text-[12px] font-semibold uppercase tracking-wider">Status</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Store</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Amount</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Created By</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Last Edited</TableHead>
+              <TableHead className="text-[12px] font-semibold uppercase tracking-wider hidden md:table-cell">Status</TableHead>
               <TableHead className="text-[12px] font-semibold uppercase tracking-wider text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -133,14 +180,22 @@ function QuotationsContent() {
               <TableRow><TableCell colSpan={9} className="text-center py-12"><p className="text-sm text-muted-foreground">No quotations found.</p></TableCell></TableRow>
             ) : quotations.map(q => (
               <TableRow key={q.id} className="group">
-                <TableCell className="font-semibold text-sm">{q.quotNo}</TableCell>
-                <TableCell className="text-sm">{new Date(q.quotDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
+                <TableCell className="font-semibold text-sm">
+                  <div className="flex flex-col">
+                    <span>{q.quotNo}</span>
+                    <span className="md:hidden text-[11px] text-muted-foreground mt-0.5">
+                      {q.store?.name || "—"} · {q.status === "finalized" ? "Finalized" : "Draft"}
+                      {q.netAmount != null ? ` · ₹${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : ""}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm hidden md:table-cell">{new Date(q.quotDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
                 <TableCell className="text-sm font-medium">{q.customerName}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{q.store?.name || "—"}</TableCell>
-                <TableCell className="text-sm tabular-nums">{q.netAmount != null ? `₹${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{q.createdBy?.username || "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{q.updatedBy?.username || "—"}</TableCell>
-                <TableCell>
+                <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{q.store?.name || "—"}</TableCell>
+                <TableCell className="text-sm tabular-nums hidden md:table-cell">{q.netAmount != null ? `₹${q.netAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{q.createdBy?.username || "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground hidden md:table-cell">{q.updatedBy?.username || "—"}</TableCell>
+                <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge variant={q.status === "finalized" ? "default" : "secondary"} className="capitalize text-[11px]">{q.status}</Badge>
                     {q.isLocked && <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1"><Lock className="h-3 w-3" /> Locked</Badge>}

@@ -118,7 +118,7 @@ export default function UnitsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="space-y-2">
           <h2 className="text-sm font-semibold">Units</h2>
           <Card className="overflow-hidden shadow-sm">
