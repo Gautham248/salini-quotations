@@ -8,6 +8,7 @@ import { nextQuotNo } from "@/lib/quot-no";
 export async function GET(req: NextRequest) {
   const s = await requireAuth();
   const storeId = await resolveStoreId(req);
+  const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
   const statusParam = searchParams.get("status") || "";
   const periodParam = searchParams.get("period") || "";
