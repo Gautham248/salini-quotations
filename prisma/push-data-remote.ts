@@ -100,6 +100,7 @@ async function syncToRemote() {
   `);
 
   await ensureColumn("CompanySettings", "storeId", "INTEGER");
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "CompanySettings_storeId_key" ON "CompanySettings"("storeId")`);
 
   await execRemote(`
     CREATE TABLE IF NOT EXISTS "Unit" (
