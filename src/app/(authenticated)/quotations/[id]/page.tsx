@@ -101,17 +101,9 @@ export default function ViewQuotationPage({
     isLocked: Boolean(item.isLocked),
   }));
 
-  const totals =
-    q.status === "finalized"
-      ? {
-          subTotal: q.subTotal as number,
-          cgst: q.cgst as number,
-          sgst: q.sgst as number,
-          roundOff: q.roundOff as number,
-          netAmount: q.netAmount as number,
-          totalGst: (q.cgst as number) + (q.sgst as number),
-        }
-      : computeTotals(lineItems);
+  const totals = lineItems.length > 0
+    ? computeTotals(lineItems)
+    : { subTotal: 0, cgst: 0, sgst: 0, roundOff: 0, netAmount: 0, totalGst: 0 };
 
   const header = {
     customerName: q.customerName as string,
