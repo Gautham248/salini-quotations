@@ -8,8 +8,9 @@ import { nextQuotNo } from "@/lib/quot-no";
 export async function GET(req: NextRequest) {
   const s = await requireAuth();
   const storeId = await resolveStoreId(req);
-  const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
+  const statusParam = searchParams.get("status") || "";
+  const periodParam = searchParams.get("period") || "";
 
   const where: Record<string, unknown> = {};
 
@@ -21,6 +22,29 @@ export async function GET(req: NextRequest) {
     where.storeId = s.user.storeId;
     // staff: only their own quotations
     if (s.user.role === "staff") where.createdById = s.user.id;
+  }
+
+  // Status filtering
+  if (statusParam) {
+    const st = statusParam.toLowerCase();
+    if (st === "locked") {
+      where.isLocked = true;
+    } else {
+      where.status = st;
+    }
+  }
+
+  // Period filtering
+  if (periodParam && periodParam !== "all") {
+    const now = Date.now();
+    let since: Date | null = null;
+    if (periodParam === "24h") since = new Date(now - 24 * 60 * 60 * 1000);
+    else if (periodParam === "7d") since = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    else if (periodParam === "30d") since = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    if (since) {
+      where.createdAt = { gte: since };
+    }
   }
 
   if (search) {

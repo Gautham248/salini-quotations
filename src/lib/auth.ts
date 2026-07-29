@@ -23,8 +23,8 @@ export const authConfig: NextAuthConfig = {
           console.warn(`Auth failed: User '${credentials.username}' not found or inactive.`);
           return null;
         }
-        if (u.storeId && u.store && !u.store.isActive && u.role !== "superadmin") {
-          console.warn(`Auth failed: Store '${u.store.name}' for user '${credentials.username}' is inactive.`);
+        if (u.role !== "superadmin" && (!u.storeId || !u.store || !u.store.isActive)) {
+          console.warn(`Auth failed: Store for user '${credentials.username}' is inactive or has been deleted.`);
           return null;
         }
         const isValidPassword = await bcrypt.compare(credentials.password as string, u.passwordHash);

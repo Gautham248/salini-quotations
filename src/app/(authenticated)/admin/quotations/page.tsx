@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -14,6 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Eye, Copy, Pencil, Trash2, Plus, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -29,23 +36,40 @@ interface QS {
   createdBy: { username: string };
 }
 
-export default function AdminQuotationsPage() {
+function QuotationsContent() {
+  const searchParams = useSearchParams();
+  const urlStatus = searchParams.get("status");
+  const urlPeriod = searchParams.get("period");
+
   const [quotations, setQuotations] = useState<QS[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPeriod, setFilterPeriod] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (urlStatus) setFilterStatus(urlStatus);
+    else setFilterStatus("all");
+
+    if (urlPeriod) setFilterPeriod(urlPeriod);
+    else setFilterPeriod("all");
+  }, [urlStatus, urlPeriod]);
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams();
     if (search) p.set("search", search);
+    if (filterStatus !== "all") p.set("status", filterStatus);
+    if (filterPeriod !== "all") p.set("period", filterPeriod);
+
     const r = await fetch(`/api/quotations?${p}`);
     if (r.ok) {
       setQuotations(await r.json());
     }
     setLoading(false);
-  }, [search]);
+  }, [search, filterStatus, filterPeriod]);
 
   useEffect(() => {
     fetchQuotations();
@@ -81,7 +105,7 @@ export default function AdminQuotationsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">All Quotations</h1>
@@ -98,14 +122,47 @@ export default function AdminQuotationsPage() {
         </Link>
       </div>
 
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          placeholder="Search by customer or quote number..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 w-full"
-        />
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search by customer or quote number..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <Select
+          value={filterStatus}
+          onValueChange={(v) => setFilterStatus(v ?? "all")}
+        >
+          <SelectTrigger className="w-full sm:w-36">
+            <SelectValue placeholder="All status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="finalized">Finalized</SelectItem>
+            <SelectItem value="locked">Locked</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterPeriod}
+          onValueChange={(v) => setFilterPeriod(v ?? "all")}
+        >
+          <SelectTrigger className="w-full sm:w-36">
+            <SelectValue placeholder="All time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="24h">Last 24 Hours</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── Mobile card list (hidden on sm+) ── */}
@@ -247,5 +304,13 @@ export default function AdminQuotationsPage() {
         onConfirm={() => { if (deleteId !== null) del(deleteId); }}
       />
     </div>
+  );
+}
+
+export default function AdminQuotationsPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading quotations...</div>}>
+      <QuotationsContent />
+    </Suspense>
   );
 }

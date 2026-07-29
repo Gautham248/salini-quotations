@@ -25,9 +25,10 @@ describe("nextQuotNo", () => {
   let testStoreId: number;
 
   beforeAll(async () => {
-    // Create a test store
+    // Create a test store with unique slug
+    const ts = Date.now();
     const store = await prisma.store.create({
-      data: { name: "Test Store — quot-no", slug: "test-quot-no" },
+      data: { name: `Test Store ${ts}`, slug: `test-quot-no-${ts}` },
     });
     testStoreId = store.id;
 
@@ -39,14 +40,16 @@ describe("nextQuotNo", () => {
 
   afterAll(async () => {
     // Clean up test data
-    await prisma.quotationLineItem.deleteMany({
-      where: { quotation: { storeId: testStoreId } },
-    });
-    await prisma.quotation.deleteMany({ where: { storeId: testStoreId } });
-    await prisma.storeQuotSequence.deleteMany({
-      where: { storeId: testStoreId },
-    });
-    await prisma.store.delete({ where: { id: testStoreId } });
+    if (testStoreId) {
+      await prisma.quotationLineItem.deleteMany({
+        where: { quotation: { storeId: testStoreId } },
+      });
+      await prisma.quotation.deleteMany({ where: { storeId: testStoreId } });
+      await prisma.storeQuotSequence.deleteMany({
+        where: { storeId: testStoreId },
+      });
+      await prisma.store.delete({ where: { id: testStoreId } });
+    }
   });
 
   it("produces unique sequential quotNo values under concurrent calls", async () => {
@@ -65,8 +68,9 @@ describe("nextQuotNo", () => {
 
   it("independent stores do not block each other", async () => {
     // Create a second test store
+    const ts = Date.now();
     const store2 = await prisma.store.create({
-      data: { name: "Test Store 2", slug: "test-quot-no-2" },
+      data: { name: `Test Store 2 ${ts}`, slug: `test-quot-no-2-${ts}` },
     });
     await prisma.storeQuotSequence.create({
       data: { storeId: store2.id },
@@ -99,8 +103,9 @@ describe("nextQuotNo", () => {
 
   it("skips over existing quotNo collisions (manually-inserted values)", async () => {
     // Create a fresh store for isolated collision test
+    const ts = Date.now();
     const store3 = await prisma.store.create({
-      data: { name: "Test Store 3 — collisions", slug: "test-quot-collision" },
+      data: { name: `Test Store 3 ${ts}`, slug: `test-quot-collision-${ts}` },
     });
     await prisma.storeQuotSequence.create({
       data: { storeId: store3.id },

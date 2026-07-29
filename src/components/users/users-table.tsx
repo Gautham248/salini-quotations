@@ -31,7 +31,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, KeyRound, Loader2, UserCheck, UserX, Search, Store as StoreIcon } from "lucide-react";
+import { Plus, KeyRound, Loader2, UserCheck, UserX, Search, Store as StoreIcon, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -55,6 +55,7 @@ function UsersTableInner() {
 
   const role = session?.user?.role?.toLowerCase();
   const isSuperAdmin = role === "superadmin";
+  const canDeleteUser = role === "admin" || role === "superadmin";
 
   const [users, setUsers] = useState<User[]>([]);
   const [stores, setStores] = useState<StoreInfo[]>([]);
@@ -73,6 +74,10 @@ function UsersTableInner() {
   const [resetUser, setResetUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
+
+  // User deletion state
+  const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   const currentUserId = session?.user ? Number(session.user.id) : null;
   const currentUsername = session?.user?.name;
@@ -216,6 +221,31 @@ function UsersTableInner() {
     }
   }
 
+  async function handleDeleteUser() {
+    if (!deleteTargetUser) return;
+    setDeletingUser(true);
+    try {
+      const res = await fetch(`/api/users/${deleteTargetUser.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(data.message || `User "${deleteTargetUser.username}" deleted successfully`);
+        if (data.warning) {
+          toast.warning(data.warning, { duration: 9000 });
+        }
+        setDeleteTargetUser(null);
+        fetchUsers();
+      } else {
+        toast.error(data.error || "Failed to delete user");
+      }
+    } catch {
+      toast.error("An error occurred while deleting user");
+    } finally {
+      setDeletingUser(false);
+    }
+  }
+
   function storeName(storeId: number | null) {
     if (storeId === null) return "—";
     return stores.find((s) => s.id === storeId)?.name || `#${storeId}`;
@@ -289,6 +319,7 @@ function UsersTableInner() {
             const isSelf =
               (currentUserId && u.id === currentUserId) ||
               u.username === currentUsername;
+            const canDeleteThisUser = canDeleteUser && !isSelf && (isSuperAdmin || u.role !== "superadmin");
 
             return (
               <Card key={u.id} className="p-4 space-y-3">
@@ -384,6 +415,17 @@ function UsersTableInner() {
                       </Button>
                     )}
                   </div>
+                  {canDeleteThisUser && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteTargetUser(u)}
+                      className="h-9 w-9 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 shrink-0 transition-colors"
+                      title="Delete User Permanently"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </Card>
             );
@@ -439,6 +481,7 @@ function UsersTableInner() {
                 const isSelf =
                   (currentUserId && u.id === currentUserId) ||
                   u.username === currentUsername;
+                const canDeleteThisUser = canDeleteUser && !isSelf && (isSuperAdmin || u.role !== "superadmin");
 
                 return (
                   <TableRow key={u.id} className="hover:bg-muted/50">
@@ -531,6 +574,17 @@ function UsersTableInner() {
                             className="h-8 text-[12px] font-medium border-emerald-600/40 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 transition-colors"
                           >
                             <UserCheck className="h-3.5 w-3.5 mr-1" /> Activate
+                          </Button>
+                        )}
+                        {canDeleteThisUser && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteTargetUser(u)}
+                            className="h-8 w-8 p-0 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
+                            title="Delete User Permanently"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -675,6 +729,65 @@ function UsersTableInner() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog
+        open={Boolean(deleteTargetUser)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetUser(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 font-semibold">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              Delete User Account
+            </DialogTitle>
+            <DialogDescription className="text-sm pt-1">
+              Are you sure you want to permanently delete user account{" "}
+              <span className="font-semibold text-foreground">
+                &quot;{deleteTargetUser?.username}&quot;
+              </span>{" "}
+              (Role: <span className="font-semibold text-foreground capitalize">{deleteTargetUser?.role}</span>)? This action is permanent and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteTargetUser?.role === "manager" && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+              <span>
+                <strong>Manager Removal Alert:</strong> Deleting this manager may leave the store without an active manager assigned.
+              </span>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-end pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteTargetUser(null)}
+              disabled={deletingUser}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteUser}
+              disabled={deletingUser}
+            >
+              {deletingUser ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Delete User
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

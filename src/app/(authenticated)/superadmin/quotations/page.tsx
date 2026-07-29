@@ -29,32 +29,42 @@ interface StoreInfo { id: number; name: string; }
 function QuotationsContent() {
   const searchParams = useSearchParams();
   const urlStoreId = searchParams.get("storeId");
+  const urlStatus = searchParams.get("status");
+  const urlPeriod = searchParams.get("period");
 
   const [quotations, setQuotations] = useState<QS[]>([]);
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStoreId, setFilterStoreId] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPeriod, setFilterPeriod] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (urlStoreId) {
-      setFilterStoreId(urlStoreId);
-    } else {
-      setFilterStoreId("all");
-    }
-  }, [urlStoreId]);
+    if (urlStoreId) setFilterStoreId(urlStoreId);
+    else setFilterStoreId("all");
+
+    if (urlStatus) setFilterStatus(urlStatus);
+    else setFilterStatus("all");
+
+    if (urlPeriod) setFilterPeriod(urlPeriod);
+    else setFilterPeriod("all");
+  }, [urlStoreId, urlStatus, urlPeriod]);
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams();
     if (search) p.set("search", search);
     if (filterStoreId !== "all") p.set("storeId", filterStoreId);
+    if (filterStatus !== "all") p.set("status", filterStatus);
+    if (filterPeriod !== "all") p.set("period", filterPeriod);
+
     const r = await fetch(`/api/quotations?${p}`);
     if (r.ok) setQuotations(await r.json());
     setLoading(false);
-  }, [search, filterStoreId]);
+  }, [search, filterStoreId, filterStatus, filterPeriod]);
 
   const fetchStores = async () => {
     const r = await fetch("/api/stores");
@@ -94,23 +104,46 @@ function QuotationsContent() {
         </Link>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search by customer or quote number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select
           value={filterStoreId}
           onValueChange={v => setFilterStoreId(v ?? "all")}
-          items={{
-            all: "All Stores",
-            ...Object.fromEntries(stores.map(s => [String(s.id), s.name]))
-          }}
         >
-          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="All stores" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All stores" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stores</SelectItem>
             {stores.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterStatus}
+          onValueChange={v => setFilterStatus(v ?? "all")}
+        >
+          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="finalized">Finalized</SelectItem>
+            <SelectItem value="locked">Locked</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterPeriod}
+          onValueChange={v => setFilterPeriod(v ?? "all")}
+        >
+          <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="All time" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="24h">Last 24 Hours</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
           </SelectContent>
         </Select>
       </div>

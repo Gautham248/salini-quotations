@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { Package, FileText, Users, Settings2 } from "lucide-react";
 import Link from "next/link";
 
+import { AnalyticsDashboard } from "@/components/dashboard/analytics-dashboard";
+
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const [s, setS] = useState({
@@ -57,67 +59,20 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
-  const links = [
-    {
-      href: "/admin/items",
-      label: "Master Items",
-      icon: Package,
-      desc: "Manage product catalog, rates, and categories",
-    },
-    {
-      href: "/admin/units",
-      label: "Units & Conversions",
-      icon: Settings2,
-      desc: "Manage units and conversion factors",
-    },
-    {
-      href: "/admin/users",
-      label: "Users",
-      icon: Users,
-      desc: "Add, remove, and manage staff accounts",
-    },
-    {
-      href: "/admin/quotations",
-      label: "All Quotations",
-      icon: FileText,
-      desc: "View and manage all quotations",
-    },
-  ];
-
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
           Dashboard
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Welcome back, {session?.user?.name}.
+          Welcome back, {session?.user?.name || "User"}.
         </p>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {links.map((l) => (
-          <Link key={l.href} href={l.href}>
-            <Card className="group hover:border-primary/30 hover:shadow-md transition-all duration-150 cursor-pointer h-full">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="mt-0.5 shrink-0 w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                  <l.icon className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {l.label}
-                  </p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
-                    {l.desc}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {/* Analytics Dashboard Component */}
+      <AnalyticsDashboard isSuperAdmin={role === "superadmin"} />
 
       {/* Company Settings — store-admin only; superadmin manages per-store from the Stores page */}
       {role === "superadmin" ? (

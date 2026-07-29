@@ -42,6 +42,14 @@ export async function requireSuperAdmin(): Promise<SessionWithUser> {
   return s;
 }
 
+// Accepts ONLY "admin" and "superadmin" — managers cannot delete users or alter key administrative roles
+export async function requireStrictAdmin(): Promise<SessionWithUser> {
+  const s = await requireAuth();
+  const strictAdminRoles = new Set(["admin", "superadmin"]);
+  if (!strictAdminRoles.has(s.user.role)) redirect("/quotations");
+  return s;
+}
+
 // "manager" or "superadmin" — cross-store privilege without store creation/deletion
 export async function requireManager(): Promise<SessionWithUser> {
   const s = await requireAuth();

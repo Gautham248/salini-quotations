@@ -70,3 +70,57 @@ export async function PATCH(
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { requireSuperAdmin } = await import("@/lib/auth-guards");
+  await requireSuperAdmin();
+  const { id } = await params;
+  const numId = parseInt(id);
+  if (isNaN(numId) || numId <= 0) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const store = await db.store.findUnique({ where: { id: numId } });
+  if (!store) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const body = await req.json().catch(() => ({}));
+  const deleteStaff = Boolean(body.deleteStaff);
+  const deleteQuotations = Boolean(body.deleteQuotations);
+
+  // 1. Staff handling
+  if (deleteStaff) {
+    await db.user.deleteMany({
+      where: { storeId: numId, role: { not: "superadmin" } },
+    });
+  } else {
+    // Soft delete / unassign & deactivate staff
+    await db.user.updateMany({
+      where: { storeId: numId, role: { not: "superadmin" } },
+      data: { storeId: null, isActive: false },
+    });
+  }
+
+  // 2. Quotation handling
+  if (deleteQuotations) {
+    await db.quotation.deleteMany({
+      where: { storeId: numId },
+    });
+  } else {
+    // Archive quotes as unassigned templates
+    await db.quotation.updateMany({
+      where: { storeId: numId },
+      data: { storeId: null, status: "ARCHIVED" },
+    });
+  }
+
+  // 3. Clean up store auxiliary records
+  await db.itemStoreRate.deleteMany({ where: { storeId: numId } });
+  await db.companySettings.deleteMany({ where: { storeId: numId } });
+  await db.storeQuotSequence.deleteMany({ where: { storeId: numId } });
+
+  // 4. Delete store record
+  await db.store.delete({ where: { id: numId } });
+
+  return NextResponse.json({ success: true, message: `Store "${store.name}" deleted` });
+}

@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Store, Pencil, CheckCircle2, Ban } from "lucide-react";
+import { Plus, Store, Pencil, CheckCircle2, Ban, Trash2, AlertTriangle } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,36 @@ export default function StoresPage() {
 
   // Toggle store confirm state
   const [confirmStore, setConfirmStore] = useState<StoreInfo | null>(null);
+
+  // Delete Store state & options
+  const [deleteTarget, setDeleteTarget] = useState<StoreInfo | null>(null);
+  const [deleteStaff, setDeleteStaff] = useState(false);
+  const [deleteQuotations, setDeleteQuotations] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteStore() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/stores/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteStaff, deleteQuotations }),
+      });
+      if (r.ok) {
+        toast.success(`Store "${deleteTarget.name}" deleted.`);
+        setDeleteTarget(null);
+        fetchStores();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        toast.error(err.error || "Failed to delete store");
+      }
+    } catch {
+      toast.error("Failed to delete store");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // Create form state
   const [name, setName] = useState("");
@@ -224,7 +254,7 @@ export default function StoresPage() {
               </Button>
               {s.isActive ? (
                 <Button variant="outline" size="sm" onClick={() => setConfirmStore(s)}
-                  className="flex-1 h-9 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
+                  className="flex-1 h-9 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors">
                   <Ban className="h-3.5 w-3.5 mr-1" /> Deactivate
                 </Button>
               ) : (
@@ -233,6 +263,15 @@ export default function StoresPage() {
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setDeleteTarget(s); setDeleteStaff(false); setDeleteQuotations(false); }}
+                className="h-9 px-2.5 text-[12px] font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                title="Delete Store"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </Card>
         ))}
@@ -289,7 +328,7 @@ export default function StoresPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setConfirmStore(s)}
-                        className="h-8 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                        className="h-8 text-[12px] font-medium border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-colors"
                       >
                         <Ban className="h-3.5 w-3.5 mr-1" /> Deactivate
                       </Button>
@@ -303,6 +342,15 @@ export default function StoresPage() {
                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setDeleteTarget(s); setDeleteStaff(false); setDeleteQuotations(false); }}
+                      className="h-8 px-2.5 text-[12px] font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                      title="Delete Store"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -576,6 +624,84 @@ export default function StoresPage() {
         destructive={Boolean(confirmStore?.isActive)}
         onConfirm={handleToggleConfirm}
       />
+
+      {/* Store Deletion Confirmation Dialog */}
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="space-y-2">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <DialogTitle className="text-lg font-semibold">Delete "{deleteTarget?.name}"?</DialogTitle>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Deleting this store will remove the store record, custom settings, and sequences. Please select options for associated staff and quotation data:
+            </p>
+
+            <div className="space-y-3 bg-muted/40 p-3.5 rounded-lg border text-xs">
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="deleteStaffOpt"
+                  checked={deleteStaff}
+                  onChange={(e) => setDeleteStaff(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                />
+                <label htmlFor="deleteStaffOpt" className="cursor-pointer select-none">
+                  <span className="font-semibold block text-slate-800 dark:text-slate-200">
+                    {deleteStaff ? "Permanently Delete Staff Accounts" : "Deactivate & Unassign Staff (Recommended)"}
+                  </span>
+                  <span className="text-muted-foreground text-[11px] block mt-0.5">
+                    {deleteStaff
+                      ? "Associated staff accounts will be permanently deleted from the database."
+                      : "Staff will be unassigned and deactivated to strictly block login access while preserving account logs."}
+                  </span>
+                </label>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="deleteQuotationsOpt"
+                  checked={deleteQuotations}
+                  onChange={(e) => setDeleteQuotations(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                />
+                <label htmlFor="deleteQuotationsOpt" className="cursor-pointer select-none">
+                  <span className="font-semibold block text-slate-800 dark:text-slate-200">
+                    {deleteQuotations ? "Permanently Delete Quotations" : "Archive Quotations as Templates (Recommended)"}
+                  </span>
+                  <span className="text-muted-foreground text-[11px] block mt-0.5">
+                    {deleteQuotations
+                      ? "All quotation documents and line items will be permanently erased."
+                      : "Quotations will be detached (unassigned) and preserved in archived template state without breaking historical records."}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteStore}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white font-medium"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              {deleting ? "Deleting Store..." : "Delete Store"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
