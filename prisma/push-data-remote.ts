@@ -285,6 +285,7 @@ async function syncToRemote() {
 
   // 3. Push to Remote
   console.log("🚀 Syncing records to remote Turso database...");
+  await execRemote("PRAGMA foreign_keys = OFF;");
 
   for (const s of stores as any[]) {
     await remote.execute({
@@ -382,6 +383,7 @@ async function syncToRemote() {
     });
   }
 
+  await execRemote("PRAGMA foreign_keys = ON;");
   console.log("\n✅ All local schema changes and data successfully pushed to remote Turso database!");
   await localClient.close();
   await remote.close();
