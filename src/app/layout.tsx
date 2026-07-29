@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <SessionProvider>
           {children}
-          <Toaster position="top-center" />
+          <Toaster position="top-center" closeButton />
         </SessionProvider>
       </body>
     </html>
