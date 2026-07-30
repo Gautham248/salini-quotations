@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "@/components/ui/sonner";
 import { PwaProvider } from "@/components/pwa-provider";
+import { NavigationProgress } from "@/components/navigation-progress";
+import { Suspense } from "react";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <SessionProvider>
           <PwaProvider />
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           {children}
           <Toaster position="top-center" closeButton />
         </SessionProvider>
