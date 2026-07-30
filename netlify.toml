@@ -11,6 +11,11 @@
   included_files = ["dev.db"]
 
 [[headers]]
-  for = "/api/*"
+  for = "/assets/*"
   [headers.values]
-    Cache-Control = "no-cache"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

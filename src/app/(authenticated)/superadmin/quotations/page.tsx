@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -26,15 +27,14 @@ interface QS {
 
 interface StoreInfo { id: number; name: string; }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 function QuotationsContent() {
   const searchParams = useSearchParams();
   const urlStoreId = searchParams.get("storeId");
   const urlStatus = searchParams.get("status");
   const urlPeriod = searchParams.get("period");
 
-  const [quotations, setQuotations] = useState<QS[]>([]);
-  const [stores, setStores] = useState<StoreInfo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStoreId, setFilterStoreId] = useState<string>(urlStoreId ?? "all");
   const [filterStatus, setFilterStatus] = useState<string>(urlStatus ?? "all");
@@ -42,45 +42,44 @@ function QuotationsContent() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const router = useRouter();
 
-  // Sync filters when URL params change (browser back/forward, dashboard links).
   useEffect(() => {
     setFilterStoreId(urlStoreId ?? "all");
     setFilterStatus(urlStatus ?? "all");
     setFilterPeriod(urlPeriod ?? "all");
   }, [urlStoreId, urlStatus, urlPeriod]);
 
-  const fetchQuotations = useCallback(async () => {
-    setLoading(true);
-    const p = new URLSearchParams();
-    if (search) p.set("search", search);
-    if (filterStoreId !== "all") p.set("storeId", filterStoreId);
-    if (filterStatus !== "all") p.set("status", filterStatus);
-    if (filterPeriod !== "all") p.set("period", filterPeriod);
+  // Build API URL from filters
+  const buildUrl = new URLSearchParams();
+  if (search) buildUrl.set("search", search);
+  if (filterStoreId !== "all") buildUrl.set("storeId", filterStoreId);
+  if (filterStatus !== "all") buildUrl.set("status", filterStatus);
+  if (filterPeriod !== "all") buildUrl.set("period", filterPeriod);
 
-    const r = await fetch(`/api/quotations?${p}`);
-    if (r.ok) setQuotations(await r.json());
-    setLoading(false);
-  }, [search, filterStoreId, filterStatus, filterPeriod]);
+  const { data: quotations = [], isLoading: loading } = useSWR<QS[]>(
+    `/api/quotations?${buildUrl}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
-  const fetchStores = async () => {
-    const r = await fetch("/api/stores");
-    if (r.ok) setStores(await r.json());
-  };
-
-  useEffect(() => { fetchQuotations(); fetchStores(); }, [fetchQuotations]);
+  const { data: stores = [] } = useSWR<StoreInfo[]>(
+    "/api/stores",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
 
   async function duplicate(id: number) {
     const r = await fetch(`/api/quotations/${id}/duplicate`, { method: "POST" });
     if (r.ok) {
       const d = await r.json();
       toast.success("Quotation duplicated");
+      mutate(`/api/quotations?${buildUrl}`);
       router.push(`/quotations/${d.id}/edit`);
     } else { toast.error("Failed to duplicate"); }
   }
 
   async function del(id: number) {
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
-    if (r.ok) { toast.success("Quotation deleted"); fetchQuotations(); }
+    if (r.ok) { toast.success("Quotation deleted"); mutate(`/api/quotations?${buildUrl}`); }
     else { toast.error("Failed to delete"); }
   }
 

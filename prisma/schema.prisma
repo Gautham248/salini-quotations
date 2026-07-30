@@ -169,6 +169,10 @@ model Quotation {
   finalizedAt     DateTime?
   lineItems       QuotationLineItem[]
 
+  @@index([storeId])
+  @@index([createdAt])
+  @@index([storeId, status])
+  @@index([createdById])
   @@unique([storeId, quotNo])
 }
 

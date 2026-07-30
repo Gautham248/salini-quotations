@@ -25,14 +25,16 @@ function createPrismaClient(): PrismaClient {
   const adapter = new PrismaLibSql(config);
   const client = new PrismaClient({ adapter });
 
-  // Self-healing schema migration check for missing columns on production/remote database.
+  // Enable WAL mode & 5s busy timeout (always, for concurrency safety in production).
+  // Schema self-healing migrations run only in dev to avoid cold-start overhead.
+  const isProduction = process.env.NODE_ENV === "production";
   if (!globalForPrisma._schemaEnsured) {
     globalForPrisma._schemaEnsured = true;
     (async () => {
       try {
-        // Enable WAL mode & 5s busy timeout to prevent SQLITE_BUSY locks during concurrent requests
         await client.$executeRawUnsafe(`PRAGMA journal_mode=WAL;`);
         await client.$executeRawUnsafe(`PRAGMA busy_timeout=5000;`);
+        if (isProduction) return;
 
         // 1. Quotation table check
         const qCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("Quotation")`);
