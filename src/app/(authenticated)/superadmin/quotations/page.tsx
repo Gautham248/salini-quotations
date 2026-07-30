@@ -36,21 +36,17 @@ function QuotationsContent() {
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterStoreId, setFilterStoreId] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterPeriod, setFilterPeriod] = useState<string>("all");
+  const [filterStoreId, setFilterStoreId] = useState<string>(urlStoreId ?? "all");
+  const [filterStatus, setFilterStatus] = useState<string>(urlStatus ?? "all");
+  const [filterPeriod, setFilterPeriod] = useState<string>(urlPeriod ?? "all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const router = useRouter();
 
+  // Sync filters when URL params change (browser back/forward, dashboard links).
   useEffect(() => {
-    if (urlStoreId) setFilterStoreId(urlStoreId);
-    else setFilterStoreId("all");
-
-    if (urlStatus) setFilterStatus(urlStatus);
-    else setFilterStatus("all");
-
-    if (urlPeriod) setFilterPeriod(urlPeriod);
-    else setFilterPeriod("all");
+    setFilterStoreId(urlStoreId ?? "all");
+    setFilterStatus(urlStatus ?? "all");
+    setFilterPeriod(urlPeriod ?? "all");
   }, [urlStoreId, urlStatus, urlPeriod]);
 
   const fetchQuotations = useCallback(async () => {

@@ -47,16 +47,15 @@ function QuotationsContent() {
   const [q, setQ] = useState<QS[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterPeriod, setFilterPeriod] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>(urlStatus ?? "all");
+  const [filterPeriod, setFilterPeriod] = useState<string>(urlPeriod ?? "all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
+  // Sync filter state when URL params change (e.g. browser back/forward or
+  // navigating from the dashboard with different params).
   useEffect(() => {
-    if (urlStatus) setFilterStatus(urlStatus);
-    else setFilterStatus("all");
-
-    if (urlPeriod) setFilterPeriod(urlPeriod);
-    else setFilterPeriod("all");
+    setFilterStatus(urlStatus ?? "all");
+    setFilterPeriod(urlPeriod ?? "all");
   }, [urlStatus, urlPeriod]);
 
   const fetchQ = useCallback(async () => {
