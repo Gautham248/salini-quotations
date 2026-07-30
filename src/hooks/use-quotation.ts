@@ -210,7 +210,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
 
   function updateHeader(f: keyof QuotationHeader, v: string) { setHeader(p => ({ ...p, [f]: v })); markDirty(); }
   function addLineItem(item: LineItem) {
-    if (isLineItemEffectivelyEmpty(item)) {
+    if (item.masterItemId !== null && isLineItemEffectivelyEmpty(item)) {
       toast.error("Cannot add an empty item. Please fill in description, quantity, or rate.");
       return;
     }

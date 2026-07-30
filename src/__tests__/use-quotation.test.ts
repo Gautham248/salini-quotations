@@ -46,18 +46,27 @@ describe("useQuotation - addLineItem validation", () => {
     expect(result.current.lineItems[0].description).toBe("Test Item");
   });
 
-  it("rejects empty description with zero qty and rate", () => {
+  it("allows adding blank custom line items", () => {
     const { result } = renderHook(() => useQuotation());
     act(() => {
-      result.current.addLineItem(makeLineItem({ description: "", qty: 0, rate: 0 }));
+      result.current.addLineItem(makeLineItem({ masterItemId: null, description: "", qty: 0, rate: 0 }));
+    });
+    expect(result.current.lineItems).toHaveLength(1);
+    expect(result.current.lineItems[0].masterItemId).toBeNull();
+  });
+
+  it("rejects empty description with zero qty and rate for catalog items", () => {
+    const { result } = renderHook(() => useQuotation());
+    act(() => {
+      result.current.addLineItem(makeLineItem({ masterItemId: 1, description: "", qty: 0, rate: 0 }));
     });
     expect(result.current.lineItems).toHaveLength(0);
   });
 
-  it("rejects whitespace-only description with no qty or rate", () => {
+  it("rejects whitespace-only description with no qty or rate for catalog items", () => {
     const { result } = renderHook(() => useQuotation());
     act(() => {
-      result.current.addLineItem(makeLineItem({ description: "   ", qty: 0, rate: 0 }));
+      result.current.addLineItem(makeLineItem({ masterItemId: 1, description: "   ", qty: 0, rate: 0 }));
     });
     expect(result.current.lineItems).toHaveLength(0);
   });
