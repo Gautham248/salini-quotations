@@ -9,13 +9,19 @@
 import { createClient } from "@libsql/client";
 import path from "path";
 
-let remoteUrl = process.env.REMOTE_DATABASE_URL || (process.env.DATABASE_URL?.startsWith("libsql") ? process.env.DATABASE_URL : "libsql://salini-gautham248.aws-ap-south-1.turso.io");
+let remoteUrl = process.env.REMOTE_DATABASE_URL || (process.env.DATABASE_URL?.startsWith("libsql") ? process.env.DATABASE_URL : undefined);
 const remoteAuthToken = process.env.TURSO_AUTH_TOKEN;
 
 if (!remoteAuthToken) {
-  console.log(`\nℹ️ TURSO_AUTH_TOKEN not provided locally. Local migration and schema verification complete (276/276 tests passed).`);
-  console.log(`To push to remote Turso DB, run: TURSO_AUTH_TOKEN="..." npm run db:push:remote\n`);
+  console.log(`\nℹ️ TURSO_AUTH_TOKEN not provided locally. Local migration and schema verification complete.`);
+  console.log(`To push to remote Turso DB, run: TURSO_AUTH_TOKEN="..." DATABASE_URL="libsql://..." npm run db:push:remote\n`);
   process.exit(0);
+}
+
+if (!remoteUrl) {
+  console.error(`\n❌ No remote database URL found.`);
+  console.error(`Set REMOTE_DATABASE_URL or DATABASE_URL (must start with "libsql://") before running this script.\n`);
+  process.exit(1);
 }
 
 // Convert libsql:// to https:// for HTTP client compatibility if needed
