@@ -61,23 +61,30 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
       fetch(`/api/quotations/${existingId}`)
         .then(r => r.json())
         .then(d => {
-          setHeader({
+          const loadedHeader = {
             customerName: d.customerName,
             customerAddress: d.customerAddress || "",
             customerPlace: d.customerPlace || "",
             customerGstin: d.customerGstin || "",
-            quotDate: new Date(d.quotDate).toISOString().slice(0, 10),
+            quotDate: d.quotDate && !isNaN(new Date(d.quotDate).getTime())
+              ? new Date(d.quotDate).toISOString().slice(0, 10)
+              : new Date().toISOString().slice(0, 10),
             refNo: d.refNo,
             deliveryTerms: d.deliveryTerms || "",
             gstNote: d.gstNote || "",
             validity: d.validity,
             paymentTerms: d.paymentTerms,
-          });
-          setIsLocked(Boolean(d.isLocked));
-          setStatus(d.status || "draft");
+          };
+          setHeader(loadedHeader);
+          headerRef.current = loadedHeader;
+          const lockedVal = Boolean(d.isLocked);
+          setIsLocked(lockedVal);
+          isLockedRef.current = lockedVal;
+          const statusVal = d.status || "draft";
+          setStatus(statusVal);
+          statusRef.current = statusVal;
           setQuotNo(d.quotNo || "");
-          setLineItems(
-            d.lineItems.map((item: Record<string, unknown>) => {
+          const loadedItems = (Array.isArray(d.lineItems) ? d.lineItems : []).map((item: Record<string, unknown>) => {
               const mi = item.masterItem as {
                 weightPerUnit?: number | null;
                 piecesPerUnit?: number | null;
@@ -115,8 +122,9 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
                 piecesPerUnit: ppu,
                 isLocked: Boolean(item.isLocked),
               };
-            })
-          );
+            });
+          setLineItems(loadedItems);
+          itemsRef.current = loadedItems;
           setLoading(false);
         });
     } else setLoading(false);
@@ -208,7 +216,27 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     };
   }, [dirty, autosave]);
 
-  function updateHeader(f: keyof QuotationHeader, v: string) { setHeader(p => ({ ...p, [f]: v })); markDirty(); }
+  function updateHeader(f: keyof QuotationHeader, v: string) {
+    setHeader(p => {
+      const next = { ...p, [f]: v };
+      headerRef.current = next;
+      return next;
+    });
+    markDirty();
+  }
+
+  function updateIsLocked(locked: boolean) {
+    setIsLocked(locked);
+    isLockedRef.current = locked;
+    markDirty();
+  }
+
+  function updateStatus(newStatus: string) {
+    setStatus(newStatus);
+    statusRef.current = newStatus;
+    markDirty();
+  }
+
   function addLineItem(item: LineItem) {
     if (item.masterItemId !== null && isLineItemEffectivelyEmpty(item)) {
       toast.error("Cannot add an empty item. Please fill in description, quantity, or rate.");
@@ -222,44 +250,78 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
       newItem.weightKg = parseFloat((newItem.qty * newItem.weightPerUnit).toFixed(3));
     }
     newItem.netValue = calcNetValue(newItem);
-    setLineItems(p => [...p, newItem]); markDirty();
+    setLineItems(p => {
+      const next = [...p, newItem];
+      itemsRef.current = next;
+      return next;
+    });
+    markDirty();
   }
+
   function updateLineItem(key: string, field: keyof LineItem, value: string | number | boolean | null) {
     if (typeof value === "number" && !Number.isFinite(value)) return;
-    setLineItems(p => p.map(i => { if (i.key !== key) return i;
-      let clamped = value;
-      if (field === "qty" && typeof value === "number") clamped = Math.max(0, value);
-      if (field === "rate" && typeof value === "number") clamped = Math.max(0, value);
-      if (field === "gstPercent" && typeof value === "number") clamped = Math.min(100, Math.max(0, value));
-      const u = { ...i, [field]: clamped };
-      if (field === "qty" && typeof clamped === "number") {
-        if (u.weightPerUnit && u.weightPerUnit > 0) {
-          u.weightKg = parseFloat((clamped * u.weightPerUnit).toFixed(3));
+    setLineItems(p => {
+      const next = p.map(i => {
+        if (i.key !== key) return i;
+        let clamped = value;
+        if (field === "qty" && typeof value === "number") clamped = Math.max(0, value);
+        if (field === "rate" && typeof value === "number") clamped = Math.max(0, value);
+        if (field === "gstPercent" && typeof value === "number") clamped = Math.min(100, Math.max(0, value));
+        const u = { ...i, [field]: clamped };
+        if (field === "qty" && typeof clamped === "number") {
+          if (u.weightPerUnit && u.weightPerUnit > 0) {
+            u.weightKg = parseFloat((clamped * u.weightPerUnit).toFixed(3));
+          }
+          if (u.piecesPerUnit && u.piecesPerUnit > 0) {
+            u.pieceCount = Math.round(clamped * u.piecesPerUnit);
+          }
         }
-        if (u.piecesPerUnit && u.piecesPerUnit > 0) {
-          u.pieceCount = Math.round(clamped * u.piecesPerUnit);
+        if (field === "weightKg" && typeof clamped === "number" && clamped >= 0) {
+          if (u.quoteMode === "weight" && u.weightPerUnit && u.weightPerUnit > 0) {
+            u.qty = parseFloat((clamped / u.weightPerUnit).toFixed(2));
+          }
         }
-      }
-      if (field === "weightKg" && typeof clamped === "number" && clamped >= 0) {
-        if (u.quoteMode === "weight" && u.weightPerUnit && u.weightPerUnit > 0) {
-          u.qty = parseFloat((clamped / u.weightPerUnit).toFixed(2));
+        if (field === "qty" || field === "rate" || field === "weightKg" || field === "pieceCount" || field === "quoteMode") {
+          u.netValue = calcNetValue(u);
+          if (field === "quoteMode" && value === "weight" && u.weightPerUnit && u.weightPerUnit > 0 && !u.weightKg) {
+            u.weightKg = parseFloat((u.qty * u.weightPerUnit).toFixed(3));
+          }
+          if (field === "quoteMode" && value === "pieces" && u.piecesPerUnit && u.piecesPerUnit > 0 && !u.pieceCount) {
+            u.pieceCount = Math.round(u.qty * u.piecesPerUnit);
+          }
         }
-      }
-      if (field === "qty" || field === "rate" || field === "weightKg" || field === "pieceCount" || field === "quoteMode") {
-        u.netValue = calcNetValue(u);
-        if (field === "quoteMode" && value === "weight" && u.weightPerUnit && u.weightPerUnit > 0 && !u.weightKg) {
-          u.weightKg = parseFloat((u.qty * u.weightPerUnit).toFixed(3));
-        }
-        if (field === "quoteMode" && value === "pieces" && u.piecesPerUnit && u.piecesPerUnit > 0 && !u.pieceCount) {
-          u.pieceCount = Math.round(u.qty * u.piecesPerUnit);
-        }
-      }
-      return u;
-    })); markDirty();
+        return u;
+      });
+      itemsRef.current = next;
+      return next;
+    });
+    markDirty();
   }
-  function removeLineItem(key: string) { setLineItems(p => p.filter(i => i.key !== key)); markDirty(); }
-  function moveLineItem(key: string, dir: "up"|"down") { setLineItems(p => { const idx = p.findIndex(i => i.key === key); if (idx < 0) return p; const n = dir === "up" ? idx-1 : idx+1; if (n < 0 || n >= p.length) return p; const a = [...p]; [a[idx], a[n]] = [a[n], a[idx]]; return a.map((i, j) => ({ ...i, lineNo: j+1 })); }); markDirty(); }
-  
+
+  function removeLineItem(key: string) {
+    setLineItems(p => {
+      const next = p.filter(i => i.key !== key);
+      itemsRef.current = next;
+      return next;
+    });
+    markDirty();
+  }
+
+  function moveLineItem(key: string, dir: "up" | "down") {
+    setLineItems(p => {
+      const idx = p.findIndex(i => i.key === key);
+      if (idx < 0) return p;
+      const n = dir === "up" ? idx - 1 : idx + 1;
+      if (n < 0 || n >= p.length) return p;
+      const a = [...p];
+      [a[idx], a[n]] = [a[n], a[idx]];
+      const next = a.map((i, j) => ({ ...i, lineNo: j + 1 }));
+      itemsRef.current = next;
+      return next;
+    });
+    markDirty();
+  }
+
   function syncCatalogItems(selected: {
     masterItemId: number;
     description: string;
@@ -339,21 +401,13 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
         }
       });
 
-      return [...updatedCatalogItems, ...customItems].map((item, idx) => ({
+      const next = [...updatedCatalogItems, ...customItems].map((item, idx) => ({
         ...item,
         lineNo: idx + 1,
       }));
+      itemsRef.current = next;
+      return next;
     });
-    markDirty();
-  }
-
-  function updateIsLocked(locked: boolean) {
-    setIsLocked(locked);
-    markDirty();
-  }
-
-  function updateStatus(newStatus: string) {
-    setStatus(newStatus);
     markDirty();
   }
 

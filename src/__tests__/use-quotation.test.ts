@@ -544,6 +544,29 @@ describe("useQuotation - updateStatus", () => {
     expect(result.current.status).toBe("finalized");
     expect(result.current.dirty).toBe(true);
   });
+
+  it("immediately syncs status to statusRef for synchronous manualSave", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 100, status: "draft" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useQuotation(100));
+    act(() => {
+      result.current.updateStatus("finalized");
+      result.current.updateStatus("draft");
+      result.current.manualSave();
+    });
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/quotations/100",
+      expect.objectContaining({
+        body: expect.stringContaining('"status":"draft"'),
+      })
+    );
+    vi.unstubAllGlobals();
+  });
 });
 
 // ── totals ───────────────────────────────────────────────────────────────────
