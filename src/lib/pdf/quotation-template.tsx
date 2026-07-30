@@ -344,7 +344,8 @@ function QuotationPDFDocument({
         </View>
 
         {/* ── Amount in Words ─────────────────────────────────── */}
-        <View style={[styles.footerRow, { justifyContent: "flex-end", marginBottom: 4 }]}>
+        <View style={[styles.footerRow, { marginBottom: 4 }]}>
+          <Text>E&amp;OE</Text>
           <Text style={styles.amountInWords}>{q.amountInWords}</Text>
         </View>
 
