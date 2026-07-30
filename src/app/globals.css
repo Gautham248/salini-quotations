@@ -62,6 +62,12 @@
       font-size: 16px !important;
     }
   }
+
+  /* Position Sonner toasts cleanly at top with safe-area spacing so bottom nav is never obscured */
+  [data-sonner-toaster] {
+    top: max(0.75rem, env(safe-area-inset-top)) !important;
+    z-index: 99999 !important;
+  }
 }
 
 :root {

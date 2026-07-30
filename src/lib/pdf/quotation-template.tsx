@@ -40,17 +40,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  customerBlock: { flex: 1 },
+  customerBlock: { flex: 1, paddingRight: 10 },
   customerName: { fontFamily: "Helvetica-Bold", fontSize: 8 },
   customerDetail: { fontSize: 7, marginTop: 1 },
-  metaBlock: { width: 140, alignItems: "flex-end" },
+  metaBlock: { width: 190 },
   metaRow: {
     flexDirection: "row",
     marginTop: 2,
     fontSize: 8,
   },
-  metaLabel: { fontFamily: "Helvetica-Bold", width: 65, flexShrink: 0 },
-  metaValue: { flex: 1, textAlign: "right" },
+  metaLabel: { fontFamily: "Helvetica-Bold", width: 55, flexShrink: 0 },
+  metaValue: { flex: 1 },
   // ── Table ────────────────────────────────────────────────────
   table: { marginBottom: 8 },
   tableRow: { flexDirection: "row" },
@@ -193,7 +193,7 @@ function QuotationPDFDocument({
         <Text>Description of Goods / Service</Text>
       </View>
       <View style={[styles.headerCell, styles.colGst]}>
-        <Text>GST%</Text>
+        <Text>GST</Text>
       </View>
       <View style={[styles.headerCell, styles.colQty]}>
         <Text>Qty / Uom</Text>
@@ -218,7 +218,7 @@ function QuotationPDFDocument({
           <Text style={styles.companyName}>{cs.companyName}</Text>
           <Text style={styles.subheading}>{cs.subheading}</Text>
           <Text style={styles.contactLine}>
-            Ph: {cs.phone}  Mob: {cs.mobile}  Email: {cs.email}
+            Ph: {cs.phone}{cs.mobile ? `, Mob: ${cs.mobile}` : ""}{cs.email ? `, Email: ${cs.email}` : ""}
           </Text>
           <Text style={styles.gstin}>GSTIN: {cs.gstin}</Text>
         </View>
@@ -254,7 +254,7 @@ function QuotationPDFDocument({
               <Text style={styles.metaValue}>{q.quotNo}</Text>
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Quot. Date:</Text>
+              <Text style={styles.metaLabel}>Date:</Text>
               <Text style={styles.metaValue}>
                 {q.quotDate ? formatDate(new Date(q.quotDate)) : ""}
               </Text>
@@ -316,7 +316,7 @@ function QuotationPDFDocument({
               { label: "CGST:", value: fmt(q.cgst) },
               { label: "SGST:", value: fmt(q.sgst) },
               { label: "Round Off:", value: fmt(q.roundOff) },
-              { label: "Net Amount:", value: q.netAmount.toFixed(2), bold: true },
+              { label: "Net Amount", value: q.netAmount.toFixed(2), bold: true },
             ].map((row, i) => (
               <View style={styles.tableRow} key={`total-${i}`}>
                 <View

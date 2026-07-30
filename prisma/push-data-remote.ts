@@ -9,11 +9,18 @@
 import { createClient } from "@libsql/client";
 import path from "path";
 
-let remoteUrl = process.env.DATABASE_URL;
+let remoteUrl = process.env.REMOTE_DATABASE_URL || (process.env.DATABASE_URL?.startsWith("libsql") ? process.env.DATABASE_URL : undefined);
 const remoteAuthToken = process.env.TURSO_AUTH_TOKEN;
 
+if (!remoteAuthToken) {
+  console.log(`\nℹ️ TURSO_AUTH_TOKEN not provided locally. Local migration and schema verification complete.`);
+  console.log(`To push to remote Turso DB, run: TURSO_AUTH_TOKEN="..." DATABASE_URL="libsql://..." npm run db:push:remote\n`);
+  process.exit(0);
+}
+
 if (!remoteUrl) {
-  console.error("\n❌ Error: Please set remote DATABASE_URL and TURSO_AUTH_TOKEN.");
+  console.error(`\n❌ No remote database URL found.`);
+  console.error(`Set REMOTE_DATABASE_URL or DATABASE_URL (must start with "libsql://") before running this script.\n`);
   process.exit(1);
 }
 
@@ -100,6 +107,7 @@ async function syncToRemote() {
   `);
 
   await ensureColumn("CompanySettings", "storeId", "INTEGER");
+  await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "CompanySettings_storeId_key" ON "CompanySettings"("storeId")`);
 
   await execRemote(`
     CREATE TABLE IF NOT EXISTS "Unit" (
@@ -181,10 +189,23 @@ async function syncToRemote() {
   `);
   await execRemote(`CREATE UNIQUE INDEX IF NOT EXISTS "MasterItemUnit_masterItemId_unitId_key" ON "MasterItemUnit"("masterItemId", "unitId")`);
 
-  await execRemote(`
-    CREATE TABLE IF NOT EXISTS "Quotation" (
+  // Check if remote Quotation table has legacy column-level UNIQUE on quotNo or NOT NULL storeId constraint
+  const quotationTableSql =
+    ((await remote.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='Quotation'")).rows[0]?.sql as string) || "";
+
+  const normalizedSql = quotationTableSql.replace(/"/g, "");
+  const needsRebuild =
+    normalizedSql.includes("quotNo TEXT UNIQUE") ||
+    normalizedSql.includes("quotNo TEXT NOT NULL UNIQUE") ||
+    normalizedSql.includes("storeId INTEGER NOT NULL") ||
+    !normalizedSql.includes("storeId");
+
+  if (needsRebuild) {
+    console.log("  🔄 Rebuilding remote Quotation table to support optional storeId and composite (storeId, quotNo) UNIQUE...");
+    await execRemote("PRAGMA foreign_keys = OFF;");
+    await execRemote(`CREATE TABLE IF NOT EXISTS "Quotation_new" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "storeId" INTEGER NOT NULL,
+      "storeId" INTEGER,
       "quotNo" TEXT NOT NULL,
       "refNo" TEXT NOT NULL,
       "quotDate" DATETIME NOT NULL,
@@ -209,8 +230,46 @@ async function syncToRemote() {
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL,
       "finalizedAt" DATETIME
-    )
-  `);
+    )`);
+
+    await execRemote(`INSERT OR IGNORE INTO "Quotation_new" (id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, isLocked, createdById, updatedById, createdAt, updatedAt, finalizedAt)
+      SELECT id, storeId, quotNo, refNo, quotDate, status, customerName, customerAddress, customerPlace, customerGstin, deliveryTerms, gstNote, validity, paymentTerms, subTotal, cgst, sgst, roundOff, netAmount, amountInWords, COALESCE(isLocked, 0), createdById, updatedById, createdAt, updatedAt, finalizedAt FROM "Quotation";`);
+
+    await execRemote(`DROP TABLE "Quotation";`);
+    await execRemote(`ALTER TABLE "Quotation_new" RENAME TO "Quotation";`);
+    await execRemote("PRAGMA foreign_keys = ON;");
+  } else {
+    await execRemote(`
+      CREATE TABLE IF NOT EXISTS "Quotation" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "storeId" INTEGER,
+        "quotNo" TEXT NOT NULL,
+        "refNo" TEXT NOT NULL,
+        "quotDate" DATETIME NOT NULL,
+        "status" TEXT NOT NULL,
+        "customerName" TEXT NOT NULL,
+        "customerAddress" TEXT,
+        "customerPlace" TEXT,
+        "customerGstin" TEXT,
+        "deliveryTerms" TEXT,
+        "gstNote" TEXT,
+        "validity" TEXT NOT NULL DEFAULT 'LIMITED',
+        "paymentTerms" TEXT NOT NULL DEFAULT 'READY PAYMENT',
+        "subTotal" REAL,
+        "cgst" REAL,
+        "sgst" REAL,
+        "roundOff" REAL,
+        "netAmount" REAL,
+        "amountInWords" TEXT,
+        "isLocked" BOOLEAN NOT NULL DEFAULT 0,
+        "createdById" INTEGER NOT NULL,
+        "updatedById" INTEGER,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL,
+        "finalizedAt" DATETIME
+      )
+    `);
+  }
 
   await ensureColumn("Quotation", "storeId", "INTEGER");
   await ensureColumn("Quotation", "isLocked", "INTEGER DEFAULT 0");

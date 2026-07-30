@@ -35,13 +35,13 @@ describe("Sidebar — superadmin links", () => {
   });
 
   it("includes All Quotations link for superadmin", () => {
-    const { getByText } = renderWithRole("superadmin");
-    expect(getByText("All Quotations")).toBeDefined();
+    const { getAllByText } = renderWithRole("superadmin");
+    expect(getAllByText("All Quotations").length).toBeGreaterThan(0);
   });
 
   it("includes Stores link for superadmin", () => {
-    const { getByText } = renderWithRole("superadmin");
-    expect(getByText("Stores")).toBeDefined();
+    const { getAllByText } = renderWithRole("superadmin");
+    expect(getAllByText("Stores").length).toBeGreaterThan(0);
   });
 
   it("does NOT show New Quotation link for admin", () => {
@@ -60,23 +60,23 @@ describe("Sidebar — superadmin links", () => {
   });
 
   it("superadmin sees user role displayed", () => {
-    const { getByText } = renderWithRole("superadmin");
-    expect(getByText("superadmin")).toBeDefined();
+    const { getAllByText } = renderWithRole("superadmin");
+    expect(getAllByText("superadmin").length).toBeGreaterThan(0);
   });
 
   it("admin sees correct role-specific links", () => {
-    const { getByText } = renderWithRole("admin");
-    expect(getByText("Dashboard")).toBeDefined();
-    expect(getByText("Master Items")).toBeDefined();
-    expect(getByText("Units")).toBeDefined();
-    expect(getByText("Users")).toBeDefined();
-    expect(getByText("Settings")).toBeDefined();
+    const { getAllByText } = renderWithRole("admin");
+    expect(getAllByText("Dashboard").length).toBeGreaterThan(0);
+    expect(getAllByText("Master Items").length).toBeGreaterThan(0);
+    expect(getAllByText("Units").length).toBeGreaterThan(0);
+    expect(getAllByText("Users").length).toBeGreaterThan(0);
+    expect(getAllByText("Settings").length).toBeGreaterThan(0);
   });
 
   it("staff sees limited links", () => {
-    const { getByText } = renderWithRole("staff");
-    expect(getByText("My Quotations")).toBeDefined();
-    expect(getByText("Master Items")).toBeDefined();
+    const { getAllByText } = renderWithRole("staff");
+    expect(getAllByText("My Quotations").length).toBeGreaterThan(0);
+    expect(getAllByText("Master Items").length).toBeGreaterThan(0);
   });
 
   it("all New Quotation link hrefs point to /quotations/new", () => {

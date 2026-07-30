@@ -212,8 +212,13 @@ export function ItemsTable() {
               ...Object.fromEntries(categories.map(c => [String(c.id), `${c.name} (${c._count.items})`]))
             }}
           >
-            <SelectTrigger className="flex-1 sm:w-[180px]">
-              <SelectValue placeholder="All categories" />
+            <SelectTrigger className="flex-1 sm:w-auto min-w-[180px]">
+              <span className="text-muted-foreground font-medium mr-1">Category:</span>
+              <SelectValue>
+                {cf === "all"
+                  ? "All Categories"
+                  : categories.find((c) => String(c.id) === cf)?.name || "All Categories"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>

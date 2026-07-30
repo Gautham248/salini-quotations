@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
-import { computeTotals } from "@/lib/calculations";
+import { computeTotals, amountInWords } from "@/lib/calculations";
 import { nextQuotNo } from "@/lib/quot-no";
 
 export async function GET(req: NextRequest) {
@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
   const storeId = await resolveStoreId(req);
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
+  const statusParam = searchParams.get("status") || "";
+  const periodParam = searchParams.get("period") || "";
 
   const where: Record<string, unknown> = {};
 
@@ -21,6 +23,29 @@ export async function GET(req: NextRequest) {
     where.storeId = s.user.storeId;
     // staff: only their own quotations
     if (s.user.role === "staff") where.createdById = s.user.id;
+  }
+
+  // Status filtering
+  if (statusParam) {
+    const st = statusParam.toLowerCase();
+    if (st === "locked") {
+      where.isLocked = true;
+    } else {
+      where.status = st;
+    }
+  }
+
+  // Period filtering
+  if (periodParam && periodParam !== "all") {
+    const now = Date.now();
+    let since: Date | null = null;
+    if (periodParam === "24h") since = new Date(now - 24 * 60 * 60 * 1000);
+    else if (periodParam === "7d") since = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    else if (periodParam === "30d") since = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    if (since) {
+      where.createdAt = { gte: since };
+    }
   }
 
   if (search) {
@@ -49,6 +74,7 @@ export async function GET(req: NextRequest) {
           qty: i.qty,
           rate: i.rate,
           gstPercent: i.gstPercent,
+          netValue: i.netValue,
         }))
       ).netAmount;
     }
@@ -104,6 +130,15 @@ export async function POST(req: NextRequest) {
         typeof item.description === "string" && item.description.trim().length > 0
     );
     if (validItems.length > 0) {
+      const totals = computeTotals(
+        validItems.map((i: Record<string, unknown>) => ({
+          qty: (i.qty as number) || 0,
+          rate: (i.rate as number) || 0,
+          gstPercent: (i.gstPercent as number) || 0,
+          netValue: typeof i.netValue === "number" ? i.netValue : undefined,
+        }))
+      );
+
       await db.quotationLineItem.createMany({
         data: validItems.map((item: Record<string, unknown>, idx: number) => ({
           quotationId: q.id,
@@ -120,6 +155,18 @@ export async function POST(req: NextRequest) {
           pieceCount: (item.pieceCount as number) || null,
           isLocked: Boolean(item.isLocked),
         })),
+      });
+
+      await db.quotation.update({
+        where: { id: q.id },
+        data: {
+          subTotal: totals.subTotal,
+          cgst: totals.cgst,
+          sgst: totals.sgst,
+          roundOff: totals.roundOff,
+          netAmount: totals.netAmount,
+          amountInWords: amountInWords(totals.netAmount),
+        },
       });
     }
   }

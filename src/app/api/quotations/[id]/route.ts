@@ -108,6 +108,7 @@ export async function PUT(
           qty: i.qty as number,
           rate: i.rate as number,
           gstPercent: (i.gstPercent as number) || 0,
+          netValue: typeof i.netValue === "number" ? (i.netValue as number) : undefined,
         }))
       );
       totalsData = {

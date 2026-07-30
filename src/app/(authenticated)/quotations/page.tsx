@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -14,6 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Eye, Pencil, Copy, Trash2, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -28,25 +36,41 @@ interface QS {
   netAmount: number | null;
 }
 
-export default function StaffQuotationsPage() {
+function QuotationsContent() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const urlStatus = searchParams.get("status");
+  const urlPeriod = searchParams.get("period");
+
   const role = session?.user?.role?.toLowerCase();
   const isAdmin = role === "admin" || role === "superadmin" || role === "manager";
   const [q, setQ] = useState<QS[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>(urlStatus ?? "all");
+  const [filterPeriod, setFilterPeriod] = useState<string>(urlPeriod ?? "all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  // Sync filter state when URL params change (e.g. browser back/forward or
+  // navigating from the dashboard with different params).
+  useEffect(() => {
+    setFilterStatus(urlStatus ?? "all");
+    setFilterPeriod(urlPeriod ?? "all");
+  }, [urlStatus, urlPeriod]);
 
   const fetchQ = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams();
     if (search) p.set("search", search);
+    if (filterStatus !== "all") p.set("status", filterStatus);
+    if (filterPeriod !== "all") p.set("period", filterPeriod);
+
     const r = await fetch(`/api/quotations?${p}`);
     if (r.ok) {
       setQ(await r.json());
     }
     setLoading(false);
-  }, [search]);
+  }, [search, filterStatus, filterPeriod]);
 
   useEffect(() => {
     fetchQ();
@@ -108,14 +132,63 @@ export default function StaffQuotationsPage() {
         </Link>
       </div>
 
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          placeholder="Search by customer name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 w-full"
-        />
+      {/* Filter / Search Controls */}
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search by customer or quote number..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 w-full"
+          />
+        </div>
+
+        <Select
+          value={filterStatus}
+          onValueChange={(v) => setFilterStatus(v ?? "all")}
+          items={{
+            all: "All Statuses",
+            draft: "Draft",
+            finalized: "Finalized",
+            locked: "Locked",
+            archived: "Archived",
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
+            <span className="text-muted-foreground font-medium mr-1">Status:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="finalized">Finalized</SelectItem>
+            <SelectItem value="locked">Locked</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterPeriod}
+          onValueChange={(v) => setFilterPeriod(v ?? "all")}
+          items={{
+            all: "All Time",
+            "24h": "Last 24 Hours",
+            "7d": "Last 7 Days",
+            "30d": "Last 30 Days",
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-auto min-w-[150px]">
+            <span className="text-muted-foreground font-medium mr-1">Period:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="24h">Last 24 Hours</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── Mobile card list (hidden on sm+) ── */}
@@ -124,7 +197,7 @@ export default function StaffQuotationsPage() {
           <p className="text-center py-12 text-sm text-muted-foreground">Loading...</p>
         ) : q.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground">No quotations yet.</p>
+            <p className="text-sm text-muted-foreground">No quotations found.</p>
             <Link href="/quotations/new" className="text-[13px] text-primary hover:underline mt-1 inline-block">
               Create your first quotation
             </Link>
@@ -214,7 +287,7 @@ export default function StaffQuotationsPage() {
             ) : q.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12">
-                  <p className="text-sm text-muted-foreground">No quotations yet.</p>
+                  <p className="text-sm text-muted-foreground">No quotations found.</p>
                   <Link href="/quotations/new" className="text-[13px] text-primary hover:underline mt-1 inline-block">
                     Create your first quotation
                   </Link>
@@ -288,5 +361,13 @@ export default function StaffQuotationsPage() {
         onConfirm={() => { if (deleteId !== null) del(deleteId); }}
       />
     </div>
+  );
+}
+
+export default function StaffQuotationsPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
+      <QuotationsContent />
+    </Suspense>
   );
 }
