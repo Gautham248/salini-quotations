@@ -133,6 +133,7 @@ export function Sidebar() {
               <Link
                 key={l.href}
                 href={l.href}
+                prefetch
                 className={cn(
                   "flex items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
                   active
@@ -182,6 +183,7 @@ export function Sidebar() {
             <Link
               key={l.href}
               href={l.href}
+              prefetch
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors py-2",
                 active
@@ -259,6 +261,7 @@ export function Sidebar() {
                 <Link
                   key={l.href}
                   href={l.href}
+                  prefetch
                   onClick={() => setMoreOpen(false)}
                   className={cn(
                     "flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-sm font-medium transition-all",
