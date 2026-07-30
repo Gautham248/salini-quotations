@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import {
   Table,
   TableBody,
@@ -36,6 +37,8 @@ interface QS {
   netAmount: number | null;
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 function QuotationsContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -44,37 +47,22 @@ function QuotationsContent() {
 
   const role = session?.user?.role?.toLowerCase();
   const isAdmin = role === "admin" || role === "superadmin" || role === "manager";
-  const [q, setQ] = useState<QS[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>(urlStatus ?? "all");
   const [filterPeriod, setFilterPeriod] = useState<string>(urlPeriod ?? "all");
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  // Sync filter state when URL params change (e.g. browser back/forward or
-  // navigating from the dashboard with different params).
-  useEffect(() => {
-    setFilterStatus(urlStatus ?? "all");
-    setFilterPeriod(urlPeriod ?? "all");
-  }, [urlStatus, urlPeriod]);
+  // Build API URL from filters
+  const buildUrl = new URLSearchParams();
+  if (search) buildUrl.set("search", search);
+  if (filterStatus !== "all") buildUrl.set("status", filterStatus);
+  if (filterPeriod !== "all") buildUrl.set("period", filterPeriod);
 
-  const fetchQ = useCallback(async () => {
-    setLoading(true);
-    const p = new URLSearchParams();
-    if (search) p.set("search", search);
-    if (filterStatus !== "all") p.set("status", filterStatus);
-    if (filterPeriod !== "all") p.set("period", filterPeriod);
-
-    const r = await fetch(`/api/quotations?${p}`);
-    if (r.ok) {
-      setQ(await r.json());
-    }
-    setLoading(false);
-  }, [search, filterStatus, filterPeriod]);
-
-  useEffect(() => {
-    fetchQ();
-  }, [fetchQ]);
+  const { data: q = [], isLoading: loading } = useSWR<QS[]>(
+    `/api/quotations?${buildUrl}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   async function duplicate(id: number) {
     const r = await fetch(`/api/quotations/${id}/duplicate`, {
@@ -82,7 +70,7 @@ function QuotationsContent() {
     });
     if (r.ok) {
       toast.success("Quotation duplicated");
-      fetchQ();
+      mutate(`/api/quotations?${buildUrl}`);
     } else {
       toast.error("Failed to duplicate");
     }
@@ -92,7 +80,7 @@ function QuotationsContent() {
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
     if (r.ok) {
       toast.success("Quotation deleted");
-      fetchQ();
+      mutate(`/api/quotations?${buildUrl}`);
     } else {
       toast.error("Failed to delete");
     }

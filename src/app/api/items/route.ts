@@ -66,7 +66,14 @@ export async function GET(req: NextRequest) {
     include: { _count: { select: { items: true } } },
   });
 
-  return NextResponse.json({ items: resolvedItems, categories });
+  return NextResponse.json(
+    { items: resolvedItems, categories },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+      },
+    }
+  );
 }
 
 export async function POST(req: NextRequest) {

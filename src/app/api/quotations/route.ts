@@ -57,34 +57,25 @@ export async function GET(req: NextRequest) {
 
   const q = await db.quotation.findMany({
     where,
-    include: {
+    select: {
+      id: true,
+      quotNo: true,
+      quotDate: true,
+      customerName: true,
+      status: true,
+      isLocked: true,
+      netAmount: true,
+      storeId: true,
+      createdById: true,
+      updatedAt: true,
       store: { select: { name: true } },
       createdBy: { select: { username: true } },
       updatedBy: { select: { username: true } },
-      lineItems: { orderBy: { lineNo: "asc" } },
     },
     orderBy: { updatedAt: "desc" },
   });
 
-  const res = q.map((item) => {
-    let netAmount = item.netAmount;
-    if ((netAmount === null || netAmount === undefined) && item.lineItems && item.lineItems.length > 0) {
-      netAmount = computeTotals(
-        item.lineItems.map((i) => ({
-          qty: i.qty,
-          rate: i.rate,
-          gstPercent: i.gstPercent,
-          netValue: i.netValue,
-        }))
-      ).netAmount;
-    }
-    return {
-      ...item,
-      netAmount,
-    };
-  });
-
-  return NextResponse.json(res);
+  return NextResponse.json(q);
 }
 
 export async function POST(req: NextRequest) {

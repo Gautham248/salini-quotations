@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import useSWR from "swr";
 import {
   Card,
   CardContent,
@@ -36,7 +37,8 @@ import {
   Building2,
   Settings2,
 } from "lucide-react";
-import { toast } from "sonner";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface QuotationSummaryItem {
   id: number;
@@ -92,29 +94,12 @@ interface AnalyticsDashboardProps {
 
 export function AnalyticsDashboard({ isSuperAdmin = false }: AnalyticsDashboardProps) {
   const [period, setPeriod] = useState<"24h" | "7d" | "30d" | "all">("24h");
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/analytics?period=${period}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      } else {
-        toast.error("Failed to load analytics data");
-      }
-    } catch {
-      toast.error("Error fetching analytics");
-    } finally {
-      setLoading(false);
-    }
-  }, [period]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+  const { data, isLoading: loading, isValidating, mutate } = useSWR<AnalyticsData>(
+    `/api/analytics?period=${period}`,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
 
   const formatCurrency = (val: number) =>
     `₹${val.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -170,12 +155,12 @@ export function AnalyticsDashboard({ isSuperAdmin = false }: AnalyticsDashboardP
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchAnalytics}
-            disabled={loading}
+            onClick={() => mutate()}
+            disabled={isValidating}
             className="h-8 w-8 p-0 shrink-0"
             title="Refresh analytics"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>

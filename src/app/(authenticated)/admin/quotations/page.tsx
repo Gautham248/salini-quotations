@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import {
   Table,
   TableBody,
@@ -36,13 +37,13 @@ interface QS {
   createdBy: { username: string };
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 function QuotationsContent() {
   const searchParams = useSearchParams();
   const urlStatus = searchParams.get("status");
   const urlPeriod = searchParams.get("period");
 
-  const [quotations, setQuotations] = useState<QS[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPeriod, setFilterPeriod] = useState<string>("all");
@@ -52,34 +53,28 @@ function QuotationsContent() {
   useEffect(() => {
     if (urlStatus) setFilterStatus(urlStatus);
     else setFilterStatus("all");
-
     if (urlPeriod) setFilterPeriod(urlPeriod);
     else setFilterPeriod("all");
   }, [urlStatus, urlPeriod]);
 
-  const fetchQuotations = useCallback(async () => {
-    setLoading(true);
-    const p = new URLSearchParams();
-    if (search) p.set("search", search);
-    if (filterStatus !== "all") p.set("status", filterStatus);
-    if (filterPeriod !== "all") p.set("period", filterPeriod);
+  // Build API URL from filters
+  const buildUrl = new URLSearchParams();
+  if (search) buildUrl.set("search", search);
+  if (filterStatus !== "all") buildUrl.set("status", filterStatus);
+  if (filterPeriod !== "all") buildUrl.set("period", filterPeriod);
 
-    const r = await fetch(`/api/quotations?${p}`);
-    if (r.ok) {
-      setQuotations(await r.json());
-    }
-    setLoading(false);
-  }, [search, filterStatus, filterPeriod]);
-
-  useEffect(() => {
-    fetchQuotations();
-  }, [fetchQuotations]);
+  const { data: quotations = [], isLoading: loading } = useSWR<QS[]>(
+    `/api/quotations?${buildUrl}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   async function duplicate(id: number) {
     const r = await fetch(`/api/quotations/${id}/duplicate`, { method: "POST" });
     if (r.ok) {
       const d = await r.json();
       toast.success("Quotation duplicated");
+      mutate(`/api/quotations?${buildUrl}`);
       router.push(`/quotations/${d.id}/edit`);
     } else {
       toast.error("Failed to duplicate");
@@ -90,7 +85,7 @@ function QuotationsContent() {
     const r = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
     if (r.ok) {
       toast.success("Quotation deleted");
-      fetchQuotations();
+      mutate(`/api/quotations?${buildUrl}`);
     } else {
       toast.error("Failed to delete");
     }
