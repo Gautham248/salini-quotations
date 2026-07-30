@@ -38,36 +38,60 @@ async function handleFinalize(idStr: string, req: NextRequest) {
     const totals = computeTotals(q.lineItems);
     const words = amountInWords(totals.netAmount);
 
-    const upd = await db.quotation.update({
-      where: { id: idn },
-      data: {
-        status: "finalized",
-        finalizedAt: new Date(),
-        subTotal: totals.subTotal,
-        cgst: totals.cgst,
-        sgst: totals.sgst,
-        roundOff: totals.roundOff,
-        netAmount: totals.netAmount,
-        amountInWords: words,
-      },
-      include: { lineItems: { orderBy: { lineNo: "asc" } } },
-    });
+    let finalData = {
+      ...q,
+      subTotal: totals.subTotal,
+      cgst: totals.cgst,
+      sgst: totals.sgst,
+      roundOff: totals.roundOff,
+      netAmount: totals.netAmount,
+      amountInWords: words,
+      status: "finalized",
+    };
 
-    const settings = upd.storeId
-      ? await db.companySettings.findUnique({
-          where: { storeId: upd.storeId },
-        })
-      : null;
+    // Only perform DB update if quotation is not yet finalized
+    if (q.status !== "finalized") {
+      try {
+        const upd = await db.quotation.update({
+          where: { id: idn },
+          data: {
+            status: "finalized",
+            finalizedAt: new Date(),
+            subTotal: totals.subTotal,
+            cgst: totals.cgst,
+            sgst: totals.sgst,
+            roundOff: totals.roundOff,
+            netAmount: totals.netAmount,
+            amountInWords: words,
+          },
+          include: { lineItems: { orderBy: { lineNo: "asc" } } },
+        });
+        finalData = upd as typeof finalData;
+      } catch (dbErr) {
+        console.warn("Database status update timed out or failed, proceeding with PDF generation:", dbErr);
+      }
+    }
+
+    let settings = null;
+    if (finalData.storeId) {
+      try {
+        settings = await db.companySettings.findUnique({
+          where: { storeId: finalData.storeId },
+        });
+      } catch (sErr) {
+        console.warn("Could not fetch company settings, using defaults:", sErr);
+      }
+    }
 
     const pdf = await generatePdf(
-      upd as unknown as Record<string, unknown>,
+      finalData as unknown as Record<string, unknown>,
       settings as unknown as Record<string, unknown> | null
     );
 
     return new NextResponse(pdf as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="Quotation_${upd.quotNo}.pdf"`,
+        "Content-Disposition": `inline; filename="Quotation_${finalData.quotNo}.pdf"`,
       },
     });
   } catch (err) {
