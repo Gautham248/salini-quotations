@@ -76,7 +76,7 @@ function NewQuotationContent() {
       return;
     }
     setFinalizing(true);
-    await quote.manualSave();
+    await quote.manualSave({ suppressToast: true });
     const r = await fetch(`/api/quotations/${quote.id}/finalize`, {
       method: "POST",
     });

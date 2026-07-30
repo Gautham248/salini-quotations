@@ -74,7 +74,7 @@ export default function EditQuotationPage({
     const targetState = !isDocumentLocked;
     quote.updateIsLocked(targetState);
     setShowDocLockDialog(false);
-    await quote.manualSave();
+    await quote.manualSave({ suppressToast: true });
     toast.success(
       targetState
         ? "Document locked. Staff can no longer edit."
@@ -96,7 +96,7 @@ export default function EditQuotationPage({
     quote.updateStatus("finalized");
 
     try {
-      await quote.manualSave();
+      await quote.manualSave({ suppressToast: true });
       const r = await fetch(`/api/quotations/${quote.id}/finalize`, {
         method: "POST",
       });
@@ -127,7 +127,7 @@ export default function EditQuotationPage({
 
   const handleMarkAsDraft = async () => {
     quote.updateStatus("draft");
-    await quote.manualSave();
+    await quote.manualSave({ suppressToast: true });
     toast.success("Status changed to Draft");
   };
 

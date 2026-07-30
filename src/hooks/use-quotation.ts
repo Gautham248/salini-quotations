@@ -133,9 +133,10 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
   function markDirty() { dirtiedRef.current = true; setDirty(true); }
 
   const autosave = useCallback(
-    async (isManual = false) => {
+    async (isManual = false, options?: { suppressToast?: boolean }) => {
       if (!isManual && (!dirtiedRef.current || saving)) return;
       setSaving(true);
+      const suppressToast = options?.suppressToast;
 
       const effectiveStoreId = getEffectiveStoreId();
 
@@ -171,7 +172,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
           if (r.ok) {
             dirtiedRef.current = false;
             setDirty(false);
-            if (isManual) toast.success("Draft saved successfully");
+            if (isManual && !suppressToast) toast.success("Draft saved successfully");
           } else {
             const err = await r.json().catch(() => ({}));
             if (isManual) toast.error(err.error || "Failed to save draft");
@@ -192,7 +193,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
             window.history.replaceState(null, "", `/quotations/${d.id}/edit`);
             dirtiedRef.current = false;
             setDirty(false);
-            if (isManual) toast.success("Draft saved successfully");
+            if (isManual && !suppressToast) toast.success("Draft saved successfully");
           } else {
             const err = await r.json().catch(() => ({}));
             if (isManual) toast.error(err.error || "Failed to save draft");
@@ -431,6 +432,6 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     removeLineItem,
     moveLineItem,
     syncCatalogItems,
-    manualSave: () => autosave(true),
+    manualSave: (options?: { suppressToast?: boolean }) => autosave(true, options),
   };
 }
