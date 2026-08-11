@@ -50,3 +50,6 @@ dev.db*
 
 # graphify
 graphify-out/
+
+# Local Netlify folder
+.netlify
