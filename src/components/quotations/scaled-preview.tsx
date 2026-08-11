@@ -20,11 +20,13 @@ export function ScaledPreview({
   lineItems: LineItem[];
   totals: {
     subTotal: number;
+    subTotalBeforeTax: number;
     cgst: number;
     sgst: number;
     roundOff: number;
     netAmount: number;
     totalGst: number;
+    totalLoadingCharges: number;
   };
   storeSettings?: StorePreviewSettings | null;
   quotNo?: string;

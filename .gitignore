@@ -51,5 +51,8 @@ dev.db*
 # graphify
 graphify-out/
 
+# dev-agent
+.dev-agent/
+
 # Local Netlify folder
 .netlify

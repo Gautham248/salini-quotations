@@ -30,6 +30,12 @@ function makeLineItem(overrides: Partial<LineItem> = {}): LineItem {
     pieceCount: null,
     piecesPerUnit: null,
     isLocked: false,
+    remark: "",
+    gstExcludedRate: 0,
+    altQty: null,
+    altUnit: null,
+    gstMode: "inclusive",
+    loadingCharges: 0,
     ...overrides,
   };
 }
@@ -578,6 +584,6 @@ describe("useQuotation - totals", () => {
       result.current.addLineItem(makeLineItem({ qty: 5, rate: 100, gstPercent: 18 }));
     });
     expect(result.current.totals.subTotal).toBe(500);
-    expect(result.current.totals.netAmount).toBe(590);
+    expect(result.current.totals.netAmount).toBe(500);
   });
 });

@@ -140,6 +140,16 @@ describe("computeTotals — Multi-GST Rates and Accounting Invariance", () => {
       expect(Number.isInteger(totals.netAmount)).toBe(true);
     }
   });
+
+  it("includes global loading charges in the final netAmount calculation", () => {
+    const items = [
+      { qty: 10, rate: 100, gstPercent: 18 }
+    ];
+    const result = computeTotals(items, 150);
+    expect(result.subTotal).toBe(1000);
+    expect(result.totalLoadingCharges).toBe(150);
+    expect(result.netAmount).toBe(1330);
+  });
 });
 
 describe("amountInWords — Indian Currency System", () => {

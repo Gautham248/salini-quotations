@@ -25,14 +25,21 @@ function mapToQuotationData(q: Record<string, unknown>): QuotationData {
         weightKg: (item.weightKg as number) ?? null,
         rate: (item.rate as number) || 0,
         netValue: (item.netValue as number) || 0,
+        remark: (item.remark as string) || null,
+        altQty: (item.altQty as number) ?? null,
+        altUnit: (item.altUnit as string) ?? null,
+        loadingCharges: (item.loadingCharges as number) ?? null,
+        gstExcludedRate: (item.gstExcludedRate as number) ?? undefined,
       })
     ),
     subTotal: (q.subTotal as number) || 0,
+    subTotalBeforeTax: (q.subTotalBeforeTax as number) ?? undefined,
     cgst: (q.cgst as number) || 0,
     sgst: (q.sgst as number) || 0,
     roundOff: (q.roundOff as number) || 0,
     netAmount: (q.netAmount as number) || 0,
     amountInWords: (q.amountInWords as string) || "",
+    loadingCharges: (q.loadingCharges as number) ?? null,
   };
 }
 
@@ -58,6 +65,7 @@ function mapToCompanySettings(
     loadingNote:
       cs.loadingNote ||
       "LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA",
+    paymentQrCode: cs.paymentQrCode || null,
   };
 }
 

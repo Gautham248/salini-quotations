@@ -5,8 +5,10 @@ import {
   Text,
   View,
   StyleSheet,
+  Image,
 } from "@react-pdf/renderer";
 import { formatDate } from "@/lib/utils";
+import { computeGstExcludedRate } from "@/lib/calculations";
 
 const BORDER_COLOR = "#000000";
 const ACCENT = "#1a3a5c";
@@ -61,9 +63,11 @@ const styles = StyleSheet.create({
   },
   colSl: { width: 20, textAlign: "center" },
   colDesc: { flex: 1 },
+  colRemark: { width: 50 },
   colGst: { width: 35, textAlign: "center" },
-  colQty: { width: 60, textAlign: "center" },
-  colWeight: { width: 50, textAlign: "center" },
+  colQty: { width: 45, textAlign: "center" },
+  colAltQty: { width: 50, textAlign: "center" },
+  colUnit: { width: 45, textAlign: "center" },
   colRate: { width: 55, textAlign: "right" },
   colNet: { width: 60, textAlign: "right" },
   cell: {
@@ -124,6 +128,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 7,
   },
+  // QR beside footer terms (Option C)
+  qrFooterRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 2,
+  },
+  qrBlock: { width: 64 },
+  qrLabel: { fontSize: 5, color: "#777", textAlign: "center", marginTop: 1 },
+  termsBlock: { flex: 1 },
   disclaimer: { fontSize: 6, marginTop: 4 },
   bankDetails: { fontSize: 6, fontFamily: "Helvetica-Bold", marginTop: 2 },
 });
@@ -136,6 +150,11 @@ interface LineItem {
   weightKg: number | null;
   rate: number;
   netValue: number;
+  remark?: string | null;
+  altQty?: number | null;
+  altUnit?: string | null;
+  loadingCharges?: number | null;
+  gstExcludedRate?: number;
 }
 
 interface QuotationData {
@@ -152,11 +171,13 @@ interface QuotationData {
   paymentTerms: string;
   lineItems: LineItem[];
   subTotal: number;
+  subTotalBeforeTax?: number;
   cgst: number;
   sgst: number;
   roundOff: number;
   netAmount: number;
   amountInWords: string;
+  loadingCharges?: number | null;
 }
 
 interface CompanySettingsData {
@@ -169,6 +190,7 @@ interface CompanySettingsData {
   bankDetails: string;
   disclaimerText: string;
   loadingNote: string;
+  paymentQrCode?: string | null;
 }
 
 function fmt(v: number | null | undefined): string {
@@ -190,19 +212,25 @@ function QuotationPDFDocument({
         <Text>#</Text>
       </View>
       <View style={[styles.headerCell, styles.colDesc]}>
-        <Text>Description of Goods / Service</Text>
+        <Text>Description</Text>
+      </View>
+      <View style={[styles.headerCell, styles.colRemark]}>
+        <Text>Remark</Text>
       </View>
       <View style={[styles.headerCell, styles.colGst]}>
         <Text>GST</Text>
       </View>
       <View style={[styles.headerCell, styles.colQty]}>
-        <Text>Qty / Uom</Text>
+        <Text>Qty</Text>
       </View>
-      <View style={[styles.headerCell, styles.colWeight]}>
-        <Text>Weight</Text>
+      <View style={[styles.headerCell, styles.colAltQty]}>
+        <Text>Alt Qty</Text>
+      </View>
+      <View style={[styles.headerCell, styles.colUnit]}>
+        <Text>Unit</Text>
       </View>
       <View style={[styles.headerCell, styles.colRate]}>
-        <Text>Rate</Text>
+        <Text>Rate(ex)</Text>
       </View>
       <View style={[styles.headerCell, styles.colNet]}>
         <Text>Net Value</Text>
@@ -287,21 +315,31 @@ function QuotationPDFDocument({
               <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colDesc]}>
                 <Text>{item.description}</Text>
               </View>
+              <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colRemark]}>
+                <Text>{item.remark || ""}</Text>
+              </View>
               <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colGst]}>
                 <Text>{item.gstPercent}%</Text>
               </View>
               <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colQty]}>
                 <Text>
-                  {item.qty > 0 ? `${item.qty} ${item.unit}` : "-"}
+                  {item.qty > 0 ? String(item.qty) : "-"}
                 </Text>
               </View>
-              <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colWeight]}>
+              <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colAltQty]}>
                 <Text>
-                  {item.weightKg != null ? `${item.weightKg} Kg` : "-"}
+                  {item.altQty != null && item.altUnit ? `${item.altQty} ${item.altUnit}` : "-"}
+                </Text>
+              </View>
+              <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colUnit]}>
+                <Text>
+                  {item.unit || "-"}
                 </Text>
               </View>
               <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colRate]}>
-                <Text>{item.rate.toFixed(2)}</Text>
+                <Text>
+                  {(item.gstExcludedRate ?? computeGstExcludedRate(item.rate ?? 0, item.gstPercent ?? 0)).toFixed(2)}
+                </Text>
               </View>
               <View style={[styles.cell, i === 0 ? styles.cellTop : {}, styles.colNet]}>
                 <Text>{item.netValue.toFixed(2)}</Text>
@@ -311,13 +349,21 @@ function QuotationPDFDocument({
 
           {/* Totals rows — wrapped to prevent page-break splitting */}
           <View wrap={false}>
-            {[
-              { label: "Sub Total:", value: fmt(q.subTotal) },
-              { label: "CGST:", value: fmt(q.cgst) },
-              { label: "SGST:", value: fmt(q.sgst) },
-              { label: "Round Off:", value: fmt(q.roundOff) },
-              { label: "Net Amount", value: q.netAmount.toFixed(2), bold: true },
-            ].map((row, i) => (
+            {(() => {
+              const totalRows: { label: string; value: string; bold?: boolean }[] = [
+                { label: "Sub Total (taxable):", value: fmt(q.subTotalBeforeTax ?? q.subTotal) },
+              ];
+              if (q.loadingCharges && q.loadingCharges > 0) {
+                totalRows.push({ label: "Loading Charges:", value: fmt(q.loadingCharges) });
+              }
+              totalRows.push(
+                { label: "CGST:", value: fmt(q.cgst) },
+                { label: "SGST:", value: fmt(q.sgst) },
+                { label: "Round Off:", value: fmt(q.roundOff) },
+                { label: "Net Amount", value: q.netAmount.toFixed(2), bold: true }
+              );
+              return totalRows;
+            })().map((row, i) => (
               <View style={styles.tableRow} key={`total-${i}`}>
                 <View
                   style={[
@@ -361,19 +407,32 @@ function QuotationPDFDocument({
 
           <Text style={styles.loadingNote}>{cs.loadingNote}</Text>
 
-          <View style={styles.footerRow}>
-            <Text>Delivery: {q.deliveryTerms || ""}</Text>
-            <Text>Validity: {q.validity || "LIMITED"}</Text>
+          {/* Option C: QR on left, delivery/payment terms on right */}
+          <View style={styles.qrFooterRow}>
+            {cs.paymentQrCode ? (
+              <View style={styles.qrBlock}>
+                <Image
+                  src={cs.paymentQrCode}
+                  style={{ width: 64, height: 64 }}
+                />
+                <Text style={styles.qrLabel}>Scan to Pay</Text>
+              </View>
+            ) : null}
+            <View style={styles.termsBlock}>
+              <View style={styles.footerRow}>
+                <Text>Delivery: {q.deliveryTerms || ""}</Text>
+                <Text>Validity: {q.validity || "LIMITED"}</Text>
+              </View>
+              <View style={styles.footerRow}>
+                <Text>GST: {q.gstNote || ""}</Text>
+                <Text>Payment: {q.paymentTerms || "READY PAYMENT"}</Text>
+              </View>
+              <Text style={styles.disclaimer}>{cs.disclaimerText}</Text>
+              <Text style={styles.bankDetails}>
+                Bank: {cs.bankDetails}
+              </Text>
+            </View>
           </View>
-          <View style={styles.footerRow}>
-            <Text>GST: {q.gstNote || ""}</Text>
-            <Text>Payment: {q.paymentTerms || "READY PAYMENT"}</Text>
-          </View>
-
-          <Text style={styles.disclaimer}>{cs.disclaimerText}</Text>
-          <Text style={styles.bankDetails}>
-            Bank: {cs.bankDetails}
-          </Text>
         </View>
       </Page>
     </Document>

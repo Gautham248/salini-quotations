@@ -1,6 +1,6 @@
 "use client";
 import { formatDate } from "@/lib/utils";
-import { amountInWords } from "@/lib/calculations";
+import { amountInWords, computeGstExcludedRate, computeLineItemGst } from "@/lib/calculations";
 import type { QH } from "./quotation-header-form";
 import type { LineItem } from "@/hooks/use-quotation";
 
@@ -9,10 +9,12 @@ export interface StorePreviewSettings {
   subheading: string;
   phone: string;
   mobile: string;
+  email?: string;
   gstin: string;
   bankDetails: string;
   disclaimerText: string;
   loadingNote: string;
+  paymentQrCode?: string | null;
 }
 
 const DEFAULT_STORE: StorePreviewSettings = {
@@ -35,7 +37,7 @@ export function QuotationPreview({
 }: {
   header: QH;
   lineItems: LineItem[];
-  totals?: { subTotal: number; cgst: number; sgst: number; roundOff: number; netAmount: number; totalGst: number } | null;
+  totals?: { subTotal: number; subTotalBeforeTax: number; cgst: number; sgst: number; roundOff: number; netAmount: number; totalGst: number; totalLoadingCharges: number } | null;
   storeSettings?: StorePreviewSettings | null;
   quotNo?: string;
 }) {
@@ -44,10 +46,12 @@ export function QuotationPreview({
 
   const safeTotals = {
     subTotal: totals?.subTotal ?? 0,
+    subTotalBeforeTax: totals?.subTotalBeforeTax ?? 0,
     cgst: totals?.cgst ?? 0,
     sgst: totals?.sgst ?? 0,
     roundOff: totals?.roundOff ?? 0,
     netAmount: totals?.netAmount ?? 0,
+    totalLoadingCharges: totals?.totalLoadingCharges ?? 0,
   };
 
   return (
@@ -81,9 +85,11 @@ export function QuotationPreview({
           <tr className="bg-gray-100">
             <th className="border border-black p-1 text-center w-6">#</th>
             <th className="border border-black p-1 text-left">Description</th>
+            <th className="border border-black p-1 text-left w-16">Remark</th>
             <th className="border border-black p-1 text-center w-10">GST</th>
-            <th className="border border-black p-1 text-center w-20">Qty/Uom</th>
-            <th className="border border-black p-1 text-center w-20">Weight</th>
+            <th className="border border-black p-1 text-center w-20">Qty</th>
+            <th className="border border-black p-1 text-center w-16">Alt Qty</th>
+            <th className="border border-black p-1 text-center w-16">Unit</th>
             <th className="border border-black p-1 text-right w-16">Rate</th>
             <th className="border border-black p-1 text-right w-20">Net Value</th>
           </tr>
@@ -93,15 +99,19 @@ export function QuotationPreview({
             <tr key={item.key || i}>
               <td className="border border-black p-1 text-center">{i + 1}</td>
               <td className="border border-black p-1 break-words">{item.description}</td>
+              <td className="border border-black p-1 break-words text-[9px]">{item.remark || ""}</td>
               <td className="border border-black p-1 text-center">{item.gstPercent ?? 0}%</td>
               <td className="border border-black p-1 text-center overflow-hidden text-ellipsis whitespace-nowrap">
-                {(item.qty ?? 0) > 0 ? `${item.qty} ${item.unit || ""}` : "-"}
+                {(item.qty ?? 0) > 0 ? item.qty : "-"}
               </td>
               <td className="border border-black p-1 text-center overflow-hidden text-ellipsis whitespace-nowrap">
-                {item.weightKg != null ? `${item.weightKg} Kg` : "-"}
+                {item.altQty != null && item.altUnit ? `${item.altQty} ${item.altUnit}` : "-"}
+              </td>
+              <td className="border border-black p-1 text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                {item.unit || "-"}
               </td>
               <td className="border border-black p-1 text-right overflow-hidden text-ellipsis whitespace-nowrap">
-                {(item.rate ?? 0).toFixed(2)}
+                {computeGstExcludedRate(item.rate ?? 0, item.gstPercent ?? 0).toFixed(2)}
               </td>
               <td className="border border-black p-1 text-right overflow-hidden text-ellipsis whitespace-nowrap">
                 {(item.netValue ?? 0).toFixed(2)}
@@ -109,23 +119,29 @@ export function QuotationPreview({
             </tr>
           ))}
           <tr>
-            <td colSpan={6} className="border border-black p-1 text-right font-bold">Sub Total:</td>
-            <td className="border border-black p-1 text-right">{safeTotals.subTotal.toFixed(2)}</td>
+            <td colSpan={8} className="border border-black p-1 text-right font-bold">Sub Total (taxable):</td>
+            <td className="border border-black p-1 text-right">{safeTotals.subTotalBeforeTax.toFixed(2)}</td>
           </tr>
+          {safeTotals.totalLoadingCharges > 0 && (
+            <tr>
+              <td colSpan={8} className="border border-black p-1 text-right font-bold">Loading Charges:</td>
+              <td className="border border-black p-1 text-right">{safeTotals.totalLoadingCharges.toFixed(2)}</td>
+            </tr>
+          )}
           <tr>
-            <td colSpan={6} className="border border-black p-1 text-right font-bold">CGST:</td>
+            <td colSpan={8} className="border border-black p-1 text-right font-bold">CGST:</td>
             <td className="border border-black p-1 text-right">{safeTotals.cgst.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={6} className="border border-black p-1 text-right font-bold">SGST:</td>
+            <td colSpan={8} className="border border-black p-1 text-right font-bold">SGST:</td>
             <td className="border border-black p-1 text-right">{safeTotals.sgst.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={6} className="border border-black p-1 text-right font-bold">Round Off:</td>
+            <td colSpan={8} className="border border-black p-1 text-right font-bold">Round Off:</td>
             <td className="border border-black p-1 text-right">{safeTotals.roundOff.toFixed(2)}</td>
           </tr>
           <tr>
-            <td colSpan={6} className="border border-black p-1 text-right font-bold">Net Amount</td>
+            <td colSpan={8} className="border border-black p-1 text-right font-bold">Net Amount</td>
             <td className="border border-black p-1 text-right font-bold">{safeTotals.netAmount.toFixed(2)}</td>
           </tr>
         </tbody>
@@ -140,16 +156,32 @@ export function QuotationPreview({
           <p>Authorized Signatory</p>
         </div>
         <p className="font-bold">{cs.loadingNote}</p>
-        <div className="flex justify-between mt-1">
-          <span>Delivery: {header?.deliveryTerms}</span>
-          <span>Validity: {header?.validity}</span>
+        {/* Footer: QR on left, terms on right (Option C) */}
+        <div className="flex gap-2 mt-1">
+          {cs.paymentQrCode && (
+            <div className="shrink-0 flex flex-col items-center justify-start gap-0.5">
+              <img
+                src={cs.paymentQrCode}
+                alt="Payment QR Code"
+                className="w-[72px] h-[72px] object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <span className="text-[8px] text-gray-500">Scan to Pay</span>
+            </div>
+          )}
+          <div className="flex-1">
+            <div className="flex justify-between">
+              <span>Delivery: {header?.deliveryTerms}</span>
+              <span>Validity: {header?.validity}</span>
+            </div>
+            <div className="flex justify-between mt-0.5">
+              <span>GST: {header?.gstNote}</span>
+              <span>Payment: {header?.paymentTerms}</span>
+            </div>
+            <p className="mt-1 text-[9px]">{cs.disclaimerText}</p>
+            <p className="font-bold text-[9px]">Bank: {cs.bankDetails}</p>
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span>GST: {header?.gstNote}</span>
-          <span>Payment: {header?.paymentTerms}</span>
-        </div>
-        <p className="mt-1 text-[9px]">{cs.disclaimerText}</p>
-        <p className="font-bold text-[9px]">Bank: {cs.bankDetails}</p>
       </div>
     </div>
   );

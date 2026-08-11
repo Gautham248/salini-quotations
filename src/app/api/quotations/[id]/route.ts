@@ -109,7 +109,10 @@ export async function PUT(
           rate: i.rate as number,
           gstPercent: (i.gstPercent as number) || 0,
           netValue: typeof i.netValue === "number" ? (i.netValue as number) : undefined,
-        }))
+          gstExcludedRate: typeof i.gstExcludedRate === "number" ? (i.gstExcludedRate as number) : undefined,
+          gstMode: (i.gstMode as string) || "inclusive",
+        })),
+        typeof b.loadingCharges === "number" ? b.loadingCharges : (ex.loadingCharges ?? 0)
       );
       totalsData = {
         subTotal: totals.subTotal,
@@ -118,6 +121,7 @@ export async function PUT(
         roundOff: totals.roundOff,
         netAmount: totals.netAmount,
         amountInWords: amountInWords(totals.netAmount),
+        loadingCharges: totals.totalLoadingCharges,
       };
 
       await db.quotationLineItem.createMany({
@@ -135,6 +139,11 @@ export async function PUT(
           weightKg: (item.weightKg as number) || null,
           pieceCount: (item.pieceCount as number) || null,
           isLocked: Boolean(item.isLocked),
+          remark: (item.remark as string) || null,
+          altQty: (item.altQty as number) || null,
+          altUnit: (item.altUnit as string) || null,
+          gstMode: (item.gstMode as string) || "inclusive",
+          loadingCharges: (item.loadingCharges as number) || null,
         })),
       });
     } else {
@@ -166,6 +175,7 @@ export async function PUT(
       status: b.status ?? ex.status,
       isLocked: b.isLocked !== undefined ? Boolean(b.isLocked) : ex.isLocked,
       updatedById: s.user.id,
+      loadingCharges: typeof b.loadingCharges === "number" ? b.loadingCharges : ex.loadingCharges,
       ...totalsData,
     },
   });

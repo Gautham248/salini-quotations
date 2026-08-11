@@ -99,11 +99,17 @@ export default function ViewQuotationPage({
     pieceCount: (item.pieceCount as number) || null,
     piecesPerUnit: null,
     isLocked: Boolean(item.isLocked),
+    remark: (item.remark as string) || "",
+    gstExcludedRate: 0,
+    altQty: (item.altQty as number) ?? null,
+    altUnit: (item.altUnit as string) ?? null,
+    gstMode: (item.gstMode as string) || "inclusive",
+    loadingCharges: (item.loadingCharges as number) ?? 0,
   }));
 
   const totals = lineItems.length > 0
-    ? computeTotals(lineItems)
-    : { subTotal: 0, cgst: 0, sgst: 0, roundOff: 0, netAmount: 0, totalGst: 0 };
+    ? computeTotals(lineItems, (q.loadingCharges as number) || 0)
+    : { subTotal: 0, subTotalBeforeTax: 0, cgst: 0, sgst: 0, roundOff: 0, netAmount: 0, totalGst: 0, totalLoadingCharges: 0 };
 
   const header = {
     customerName: q.customerName as string,

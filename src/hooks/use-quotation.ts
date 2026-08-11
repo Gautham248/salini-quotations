@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"; import { computeNetValue, computeTotals } from "@/lib/calculations"; import { toast } from "sonner"; import { isLineItemEffectivelyEmpty } from "@/lib/validation";
+import { useState, useEffect, useRef, useCallback } from "react"; import { computeNetValue, computeTotals, computeGstExcludedRate } from "@/lib/calculations"; import { toast } from "sonner"; import { isLineItemEffectivelyEmpty } from "@/lib/validation";
 
 export interface LineItem {
   id?: number; key: string; lineNo: number; masterItemId: number | null; description: string;
@@ -6,6 +6,12 @@ export interface LineItem {
   quoteMode: string; weightKg: number | null; weightPerUnit: number | null;
   pieceCount: number | null; piecesPerUnit: number | null;
   isLocked?: boolean;
+  remark: string;
+  gstExcludedRate: number;
+  altQty: number | null;
+  altUnit: string | null;
+  gstMode: string;
+  loadingCharges: number;
 }
 export interface QuotationHeader { customerName: string; customerAddress: string; customerPlace: string; customerGstin: string; quotDate: string; refNo: string; deliveryTerms: string; gstNote: string; validity: string; paymentTerms: string; }
 const DH: QuotationHeader = { customerName: "", customerAddress: "", customerPlace: "", customerGstin: "", quotDate: new Date().toISOString().slice(0,10), refNo: "", deliveryTerms: "", gstNote: "", validity: "LIMITED", paymentTerms: "READY PAYMENT" };
@@ -25,8 +31,10 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
   const [quotNo, setQuotNo] = useState<string>("");
   const [header, setHeader] = useState(DH);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [loadingCharges, setLoadingCharges] = useState<number>(0);
   const [isLocked, setIsLocked] = useState(false);
   const [status, setStatus] = useState("draft");
+  const [storeId, setStoreId] = useState<number | undefined>(storeIdOverride);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,6 +43,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const itemsRef = useRef(lineItems);
   const headerRef = useRef(header);
+  const loadingChargesRef = useRef(loadingCharges);
   const isLockedRef = useRef(isLocked);
   const statusRef = useRef(status);
 
@@ -53,6 +62,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
 
   useEffect(() => { itemsRef.current = lineItems; }, [lineItems]);
   useEffect(() => { headerRef.current = header; }, [header]);
+  useEffect(() => { loadingChargesRef.current = loadingCharges; }, [loadingCharges]);
   useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
   useEffect(() => { statusRef.current = status; }, [status]);
 
@@ -84,10 +94,14 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
           setStatus(statusVal);
           statusRef.current = statusVal;
           setQuotNo(d.quotNo || "");
+          setLoadingCharges(d.loadingCharges ?? 0);
+          loadingChargesRef.current = d.loadingCharges ?? 0;
+          if (d.storeId) setStoreId(d.storeId as number);
           const loadedItems = (Array.isArray(d.lineItems) ? d.lineItems : []).map((item: Record<string, unknown>) => {
               const mi = item.masterItem as {
                 weightPerUnit?: number | null;
                 piecesPerUnit?: number | null;
+                alternateUnits?: Array<{ unit: { name: string }; conversionFactor: number }>;
               } | null;
               const wpu = mi?.weightPerUnit ?? null;
               const ppu = mi?.piecesPerUnit ?? null;
@@ -104,6 +118,14 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
                   : ppu && ppu > 0
                   ? Math.round(qty * ppu)
                   : null;
+              const gstMode = (item.gstMode as string) || "inclusive";
+              const rate = (item.rate as number) || 0;
+              const gstPercent = (item.gstPercent as number) || 0;
+              const storedAltQty = item.altQty as number | null | undefined;
+              const storedAltUnit = item.altUnit as string | null | undefined;
+              const alt = mi?.alternateUnits?.[0];
+              const altQty = storedAltQty ?? (alt ? parseFloat((qty * alt.conversionFactor).toFixed(3)) : null);
+              const altUnit = storedAltUnit ?? alt?.unit.name ?? null;
               return {
                 id: item.id as number,
                 key: crypto.randomUUID(),
@@ -111,9 +133,9 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
                 masterItemId: item.masterItemId as number | null,
                 description: item.description as string,
                 unit: item.unit as string,
-                rate: item.rate as number,
-                gstPercent: item.gstPercent as number,
-                qty: qty,
+                rate,
+                gstPercent,
+                qty,
                 netValue: item.netValue as number,
                 quoteMode: (item.quoteMode as string) || "quantity",
                 weightKg,
@@ -121,6 +143,12 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
                 pieceCount,
                 piecesPerUnit: ppu,
                 isLocked: Boolean(item.isLocked),
+                remark: (item.remark as string) || "",
+                gstExcludedRate: computeGstExcludedRate(rate, gstPercent),
+                altQty,
+                altUnit,
+                gstMode,
+                loadingCharges: (item.loadingCharges as number) ?? 0,
               };
             });
           setLineItems(loadedItems);
@@ -146,6 +174,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
         isLocked: isLockedRef.current,
         storeId: effectiveStoreId,
         quotDate: new Date(headerRef.current.quotDate),
+        loadingCharges: loadingChargesRef.current,
         lineItems: itemsRef.current.map(i => ({
           masterItemId: i.masterItemId,
           lineNo: i.lineNo,
@@ -159,6 +188,11 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
           weightKg: i.weightKg,
           pieceCount: i.pieceCount,
           isLocked: i.isLocked ?? false,
+          remark: i.remark,
+          altQty: i.altQty,
+          altUnit: i.altUnit,
+          gstMode: i.gstMode,
+          loadingCharges: i.loadingCharges,
         })),
       };
 
@@ -246,7 +280,16 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     if (item.rate < 0) { toast.error("Rate must be non-negative."); return; }
     if (item.qty < 0) { toast.error("Quantity must be non-negative."); return; }
     if (item.gstPercent < 0 || item.gstPercent > 100) { toast.error("GST must be between 0 and 100."); return; }
-    const newItem = { ...item, lineNo: lineItems.length + 1 };
+    const rate = item.rate;
+    const gstPercent = item.gstPercent;
+    const newItem = {
+      ...item,
+      lineNo: lineItems.length + 1,
+      gstExcludedRate: item.gstExcludedRate || computeGstExcludedRate(rate, gstPercent),
+      gstMode: item.gstMode || "inclusive",
+      remark: item.remark || "",
+      loadingCharges: item.loadingCharges ?? 0,
+    };
     if (newItem.weightKg == null && newItem.weightPerUnit && newItem.weightPerUnit > 0 && newItem.qty > 0) {
       newItem.weightKg = parseFloat((newItem.qty * newItem.weightPerUnit).toFixed(3));
     }
@@ -268,6 +311,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
         if (field === "qty" && typeof value === "number") clamped = Math.max(0, value);
         if (field === "rate" && typeof value === "number") clamped = Math.max(0, value);
         if (field === "gstPercent" && typeof value === "number") clamped = Math.min(100, Math.max(0, value));
+        if (field === "loadingCharges" && typeof value === "number") clamped = Math.max(0, value);
         const u = { ...i, [field]: clamped };
         if (field === "qty" && typeof clamped === "number") {
           if (u.weightPerUnit && u.weightPerUnit > 0) {
@@ -276,11 +320,20 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
           if (u.piecesPerUnit && u.piecesPerUnit > 0) {
             u.pieceCount = Math.round(clamped * u.piecesPerUnit);
           }
+          if (u.altUnit) {
+            u.altQty = parseFloat((clamped * (i.altQty ?? 0) / Math.max(i.qty, 0.001)).toFixed(3));
+          }
         }
         if (field === "weightKg" && typeof clamped === "number" && clamped >= 0) {
           if (u.quoteMode === "weight" && u.weightPerUnit && u.weightPerUnit > 0) {
             u.qty = parseFloat((clamped / u.weightPerUnit).toFixed(2));
           }
+        }
+        if (field === "qty" || field === "rate" || field === "gstPercent") {
+          u.gstExcludedRate = computeGstExcludedRate(
+            typeof u.rate === "number" ? u.rate : 0,
+            typeof u.gstPercent === "number" ? u.gstPercent : 0
+          );
         }
         if (field === "qty" || field === "rate" || field === "weightKg" || field === "pieceCount" || field === "quoteMode") {
           u.netValue = calcNetValue(u);
@@ -332,6 +385,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     qty: number;
     weightPerUnit: number | null;
     piecesPerUnit: number | null;
+    alternateUnits?: Array<{ unit: { name: string }; conversionFactor: number }> | null;
   }[]) {
     setLineItems(prev => {
       const existingCatalogMap = new Map<number | string, LineItem>();
@@ -366,6 +420,12 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
         const weightKg = wpu && wpu > 0 ? parseFloat((qty * wpu).toFixed(3)) : null;
         const pieceCount = ppu && ppu > 0 ? Math.round(qty * ppu) : null;
         const netValue = parseFloat((qty * sel.rate).toFixed(2));
+        const rate = sel.rate;
+        const gstPercent = sel.gstPercent;
+        const gstExcludedRate = computeGstExcludedRate(rate, gstPercent);
+        const primaryAlt = sel.alternateUnits?.[0];
+        const altQty = primaryAlt ? parseFloat((qty * primaryAlt.conversionFactor).toFixed(3)) : null;
+        const altUnit = primaryAlt?.unit.name ?? null;
 
         if (existing) {
           return {
@@ -373,14 +433,17 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
             masterItemId: sel.masterItemId,
             description: sel.description,
             unit: sel.unit,
-            rate: sel.rate,
-            gstPercent: sel.gstPercent,
+            rate,
+            gstPercent,
             qty,
             netValue,
             weightKg,
             weightPerUnit: wpu,
             pieceCount,
             piecesPerUnit: ppu,
+            gstExcludedRate,
+            altQty,
+            altUnit,
           };
         } else {
           return {
@@ -389,8 +452,8 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
             masterItemId: sel.masterItemId,
             description: sel.description,
             unit: sel.unit,
-            rate: sel.rate,
-            gstPercent: sel.gstPercent,
+            rate,
+            gstPercent,
             qty,
             netValue,
             quoteMode: "quantity",
@@ -398,6 +461,12 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
             weightPerUnit: wpu,
             pieceCount,
             piecesPerUnit: ppu,
+            remark: "",
+            gstExcludedRate,
+            altQty,
+            altUnit,
+            gstMode: "inclusive",
+            loadingCharges: 0,
           };
         }
       });
@@ -412,19 +481,31 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     markDirty();
   }
 
-  const totals = computeTotals(lineItems);
+  function setLoadingChargesFn(val: number) {
+    setLoadingCharges(val);
+    loadingChargesRef.current = val;
+    markDirty();
+  }
+
+  const totals = computeTotals(
+    lineItems.map(i => ({ ...i, gstMode: (i as LineItem).gstMode || "inclusive" })),
+    loadingCharges
+  );
   return {
     id,
     quotNo,
     header,
     lineItems,
     totals,
+    loadingCharges,
     isLocked,
     status,
+    storeId,
     loading,
     dirty,
     saving,
     updateHeader,
+    setLoadingCharges: setLoadingChargesFn,
     updateIsLocked,
     updateStatus,
     addLineItem,

@@ -9,6 +9,7 @@ import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import { StorePicker } from "@/components/ui/store-picker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Save, FileDown, Loader2, FileText, Eye, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -50,15 +51,18 @@ function NewQuotationContent() {
   const quote = useQuotation(undefined, storeIdToUse);
 
   useEffect(() => {
-    fetch("/api/settings")
+    const url = storeIdParam
+      ? `/api/settings?storeId=${storeIdParam}`
+      : `/api/settings`;
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) setStoreSettings(data);
       })
       .catch(() => {});
-  }, []);
+  }, [storeIdParam]);
 
-  if (isSuperadmin && !storeIdParam) {
+  if (isSuperadmin && !storeIdParam && !quote.id) {
     return (
       <StorePicker
         onSelect={(storeId) => router.push(`/quotations/new?storeId=${storeId}`)}
@@ -192,8 +196,25 @@ function NewQuotationContent() {
             onSaveDraft={quote.manualSave}
             onClearDraft={() => {}}
           />
-          <div className="mt-6 pt-4 border-t">
-            <QuotationTotals totals={quote.totals} />
+          <div className="mt-6 pt-4 border-t flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="globalLoadingCharges" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Loading Charges (₹)
+              </label>
+              <Input
+                id="globalLoadingCharges"
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-32 h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
+                value={quote.loadingCharges || ""}
+                onChange={e => quote.setLoadingCharges(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                disabled={quote.saving}
+              />
+            </div>
+            <div className="w-full md:w-80 shrink-0">
+              <QuotationTotals totals={quote.totals} />
+            </div>
           </div>
         </Card>
       </div>

@@ -36,6 +36,7 @@ export async function PUT(req: Request) {
         bankDetails: b.bankDetails ?? existing.bankDetails,
         disclaimerText: b.disclaimerText ?? existing.disclaimerText,
         loadingNote: b.loadingNote ?? existing.loadingNote,
+        paymentQrCode: b.paymentQrCode ?? existing.paymentQrCode,
       },
     });
     return Response.json(u);
@@ -53,6 +54,7 @@ export async function PUT(req: Request) {
       bankDetails: b.bankDetails || "",
       disclaimerText: b.disclaimerText || "",
       loadingNote: b.loadingNote || "",
+      paymentQrCode: b.paymentQrCode || null,
     },
   });
   return Response.json(c, { status: 201 });

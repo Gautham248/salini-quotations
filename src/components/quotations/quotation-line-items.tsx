@@ -98,6 +98,9 @@ export function QuotationLineItems({
                       i.weightPerUnit && i.weightPerUnit > 0 && i.qty > 0
                         ? parseFloat((i.qty * i.weightPerUnit).toFixed(3))
                         : null;
+                    const primaryAlt = i.alternateUnits?.[0];
+                    const altQty = primaryAlt ? parseFloat((i.qty * primaryAlt.conversionFactor).toFixed(3)) : null;
+                    const altUnit = primaryAlt?.unit?.name ?? null;
                     onAdd({
                       key: crypto.randomUUID(),
                       lineNo: lineItems.length + 1,
@@ -114,12 +117,18 @@ export function QuotationLineItems({
                       pieceCount: i.piecesPerUnit ? Math.round(i.qty * i.piecesPerUnit) : null,
                       piecesPerUnit: i.piecesPerUnit,
                       isLocked: false,
+                      remark: "",
+                      gstExcludedRate: 0,
+                      altQty,
+                      altUnit,
+                      gstMode: "inclusive",
+                      loadingCharges: 0,
                     });
                   });
                 }
               }}
-              onSaveDraft={onSaveDraft ?? (() => {})}
-              onClearDraft={onClearDraft ?? (() => {})}
+              onSaveDraft={onSaveDraft ?? (() => { })}
+              onClearDraft={onClearDraft ?? (() => { })}
             />
             <Button
               variant="outline"
@@ -141,6 +150,12 @@ export function QuotationLineItems({
                   pieceCount: null,
                   piecesPerUnit: null,
                   isLocked: false,
+                  remark: "",
+                  gstExcludedRate: 0,
+                  altQty: null,
+                  altUnit: null,
+                  gstMode: "inclusive",
+                  loadingCharges: 0,
                 })
               }
             >
@@ -207,17 +222,20 @@ export function QuotationLineItems({
       </div>
 
       {/* ── Desktop table (hidden below md) ── */}
-      <div className="hidden md:block border rounded-md overflow-hidden bg-card">
+      <div className="hidden md:block border rounded-md overflow-hidden bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-8">#</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead className="w-20">Remark</TableHead>
               <TableHead className="w-16">GST%</TableHead>
               <TableHead className="w-20">Mode</TableHead>
               <TableHead className="w-24">Qty</TableHead>
+              <TableHead className="w-20">Alt Qty</TableHead>
               <TableHead className="w-28">Weight (Kg)</TableHead>
               <TableHead className="w-16">Unit</TableHead>
+              <TableHead className="w-24 text-right">MRP</TableHead>
               <TableHead className="w-24 text-right">Rate</TableHead>
               <TableHead className="w-28 text-right">Net Value</TableHead>
               {!readOnly && <TableHead className="w-28 text-center">Actions</TableHead>}
@@ -227,7 +245,7 @@ export function QuotationLineItems({
             {lineItems.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={readOnly ? 9 : 10}
+                  colSpan={readOnly ? 16 : 17}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No items yet.
@@ -269,6 +287,20 @@ export function QuotationLineItems({
                           disabled={isFieldDisabled}
                           onChange={e => onUpdate(item.key, "description", e.target.value)}
                           className="h-8 text-sm"
+                        />
+                      )}
+                    </TableCell>
+
+                    <TableCell className="w-20">
+                      {readOnly ? (
+                        <span className="text-sm">{item.remark || "-"}</span>
+                      ) : (
+                        <Input
+                          value={item.remark ?? ""}
+                          disabled={isFieldDisabled}
+                          onChange={e => onUpdate(item.key, "remark", e.target.value)}
+                          placeholder="Brand"
+                          className="h-8 text-sm w-20 px-1.5"
                         />
                       )}
                     </TableCell>
@@ -337,6 +369,14 @@ export function QuotationLineItems({
                       )}
                     </TableCell>
 
+                    <TableCell className="w-20">
+                      <span className="text-xs text-muted-foreground">
+                        {item.altQty != null && item.altUnit
+                          ? `${item.altQty} ${item.altUnit}`
+                          : "-"}
+                      </span>
+                    </TableCell>
+
                     <TableCell className="w-28">
                       {readOnly ? (
                         <span className="text-sm">
@@ -395,6 +435,12 @@ export function QuotationLineItems({
                           className="h-8 text-sm text-right w-24 ml-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
                         />
                       )}
+                    </TableCell>
+
+                    <TableCell className="w-24 text-right">
+                      <span className="text-xs text-muted-foreground">
+                        {item.gstExcludedRate != null ? item.gstExcludedRate.toFixed(2) : "-"}
+                      </span>
                     </TableCell>
 
                     <TableCell className="text-right font-medium text-sm">
@@ -503,6 +549,16 @@ export function QuotationLineItems({
                     className="h-9"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Remark</Label>
+                  <Input
+                    value={item.remark ?? ""}
+                    disabled={isFieldDisabled}
+                    onChange={e => upd("remark", e.target.value)}
+                    placeholder="Brand / Narration"
+                    className="h-9"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Qty</Label>
@@ -524,7 +580,7 @@ export function QuotationLineItems({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Rate (₹)</Label>
+                    <Label className="text-xs font-medium">MRP (₹)</Label>
                     <Input
                       type="number" step="0.01" min="0"
                       value={item.rate ?? ""}

@@ -8,6 +8,7 @@ import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -59,13 +60,14 @@ export default function EditQuotationPage({
   const quote = useQuotation(parseInt(id));
 
   useEffect(() => {
-    fetch("/api/settings")
+    if (!quote.storeId) return;
+    fetch(`/api/settings?storeId=${quote.storeId}`)
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) setStoreSettings(data);
       })
       .catch(() => {});
-  }, []);
+  }, [quote.storeId]);
 
   const isDocumentLocked = Boolean(quote.isLocked);
   const isReadOnlyForStaff = !isAdmin && isDocumentLocked;
@@ -294,8 +296,25 @@ export default function EditQuotationPage({
             onClearDraft={() => {}}
             readOnly={isReadOnlyForStaff}
           />
-          <div className="mt-6 pt-4 border-t">
-            <QuotationTotals totals={quote.totals} />
+          <div className="mt-6 pt-4 border-t flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="globalLoadingCharges" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Loading Charges (₹)
+              </label>
+              <Input
+                id="globalLoadingCharges"
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-32 h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
+                value={quote.loadingCharges || ""}
+                onChange={e => quote.setLoadingCharges(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                disabled={isReadOnlyForStaff || quote.saving}
+              />
+            </div>
+            <div className="w-full md:w-80 shrink-0">
+              <QuotationTotals totals={quote.totals} />
+            </div>
           </div>
         </Card>
       </div>

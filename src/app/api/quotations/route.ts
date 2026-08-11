@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
       validity: b.validity || "LIMITED",
       paymentTerms: b.paymentTerms || "READY PAYMENT",
       createdById: s.user.id,
+      loadingCharges: (b.loadingCharges as number) || null,
     },
   });
 
@@ -127,7 +128,10 @@ export async function POST(req: NextRequest) {
           rate: (i.rate as number) || 0,
           gstPercent: (i.gstPercent as number) || 0,
           netValue: typeof i.netValue === "number" ? i.netValue : undefined,
-        }))
+          gstExcludedRate: typeof i.gstExcludedRate === "number" ? i.gstExcludedRate : undefined,
+          gstMode: (i.gstMode as string) || "inclusive",
+        })),
+        (b.loadingCharges as number) || 0
       );
 
       await db.quotationLineItem.createMany({
@@ -145,6 +149,11 @@ export async function POST(req: NextRequest) {
           weightKg: (item.weightKg as number) || null,
           pieceCount: (item.pieceCount as number) || null,
           isLocked: Boolean(item.isLocked),
+          remark: (item.remark as string) || null,
+          altQty: (item.altQty as number) || null,
+          altUnit: (item.altUnit as string) || null,
+          gstMode: (item.gstMode as string) || "inclusive",
+          loadingCharges: (item.loadingCharges as number) || null,
         })),
       });
 

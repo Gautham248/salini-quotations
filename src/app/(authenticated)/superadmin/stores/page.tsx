@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Store, Pencil, CheckCircle2, Ban, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Store, Pencil, CheckCircle2, Ban, Trash2, AlertTriangle, QrCode, Upload } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ interface StoreDetail extends StoreInfo {
   settings?: {
     companyName: string; subheading: string; phone: string; mobile: string;
     email: string; gstin: string; bankDetails: string; disclaimerText: string;
-    loadingNote: string;
+    loadingNote: string; paymentQrCode?: string | null;
   } | null;
 }
 
@@ -36,11 +36,13 @@ interface EditForm {
   companyName: string; subheading: string; phone: string; mobile: string;
   email: string; gstin: string; bankDetails: string;
   disclaimerText: string; loadingNote: string;
+  paymentQrCode: string | null;
 }
 
 const EMPTY_EDIT: EditForm = {
   name: "", slug: "", companyName: "", subheading: "", phone: "", mobile: "",
   email: "", gstin: "", bankDetails: "", disclaimerText: "", loadingNote: "",
+  paymentQrCode: null,
 };
 
 export default function StoresPage() {
@@ -100,6 +102,7 @@ export default function StoresPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(EMPTY_EDIT);
   const [editFetching, setEditFetching] = useState(false);
+  const editQrInputRef = useRef<HTMLInputElement>(null);
 
   const fetchStores = useCallback(async () => {
     setLoading(true);
@@ -173,6 +176,7 @@ export default function StoresPage() {
         bankDetails: detail.settings?.bankDetails || "",
         disclaimerText: detail.settings?.disclaimerText || "",
         loadingNote: detail.settings?.loadingNote || "",
+        paymentQrCode: detail.settings?.paymentQrCode ?? null,
       });
     } catch {
       toast.error("Failed to load store details");
@@ -208,6 +212,21 @@ export default function StoresPage() {
       toast.error("Failed to update settings");
     }
     setSaving(false);
+  }
+
+  function handleEditQrFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) {
+      toast.error("QR image must be under 512 KB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setEditForm((prev) => ({ ...prev, paymentQrCode: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   return (
@@ -588,6 +607,70 @@ export default function StoresPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Section 4: Payment QR Code */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Payment QR Code
+                    </h3>
+                  </div>
+                  <p className="text-[12px] text-muted-foreground">
+                    Shown on the left side of the invoice footer alongside delivery &amp; payment terms.
+                  </p>
+                  {editForm.paymentQrCode ? (
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={editForm.paymentQrCode}
+                        alt="Payment QR Code"
+                        className="w-20 h-20 object-contain border rounded-md bg-white p-1"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => editQrInputRef.current?.click()}
+                          className="gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Replace QR
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditForm({ ...editForm, paymentQrCode: null })}
+                          className="gap-1.5 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove QR
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => editQrInputRef.current?.click()}
+                      className="gap-1.5"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      Upload QR Image
+                    </Button>
+                  )}
+                  <input
+                    ref={editQrInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleEditQrFile}
+                  />
                 </div>
 
                 <div className="pt-2">
