@@ -165,6 +165,13 @@ interface QuotationData {
   customerAddress: string | null;
   customerPlace: string | null;
   customerGstin: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  shipToName?: string | null;
+  shipToAddress?: string | null;
+  shipToPlace?: string | null;
+  shipToGstin?: string | null;
+  deliveryNote?: string | null;
   deliveryTerms: string | null;
   gstNote: string | null;
   validity: string;
@@ -191,6 +198,9 @@ interface CompanySettingsData {
   disclaimerText: string;
   loadingNote: string;
   paymentQrCode?: string | null;
+  pan?: string | null;
+  declarationText?: string | null;
+  jurisdiction?: string | null;
 }
 
 function fmt(v: number | null | undefined): string {
@@ -230,7 +240,7 @@ function QuotationPDFDocument({
         <Text>Unit</Text>
       </View>
       <View style={[styles.headerCell, styles.colRate]}>
-        <Text>Rate(ex)</Text>
+        <Text>Rate</Text>
       </View>
       <View style={[styles.headerCell, styles.colNet]}>
         <Text>Net Value</Text>
@@ -248,7 +258,9 @@ function QuotationPDFDocument({
           <Text style={styles.contactLine}>
             Ph: {cs.phone}{cs.mobile ? `, Mob: ${cs.mobile}` : ""}{cs.email ? `, Email: ${cs.email}` : ""}
           </Text>
-          <Text style={styles.gstin}>GSTIN: {cs.gstin}</Text>
+          <Text style={styles.gstin}>
+            GSTIN: {cs.gstin}{cs.pan ? ` | PAN: ${cs.pan}` : ""}
+          </Text>
         </View>
 
         {/* ── Quotation Title ─────────────────────────────────── */}
@@ -259,7 +271,8 @@ function QuotationPDFDocument({
         {/* ── Customer Info + Metadata ────────────────────────── */}
         <View style={styles.infoRow}>
           <View style={styles.customerBlock}>
-            <Text style={styles.customerName}>{q.customerName}</Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 7, color: "#555", marginBottom: 2 }}>BILL TO (BUYER)</Text>
+            <Text style={styles.customerName}>{q.customerName || "(Name)"}</Text>
             {q.customerAddress ? (
               <Text style={styles.customerDetail}>
                 Address: {q.customerAddress}
@@ -275,7 +288,38 @@ function QuotationPDFDocument({
                 GSTIN: {q.customerGstin}
               </Text>
             ) : null}
+            {q.customerPhone ? (
+              <Text style={styles.customerDetail}>
+                Ph: {q.customerPhone}
+              </Text>
+            ) : null}
+            {q.customerEmail ? (
+              <Text style={styles.customerDetail}>
+                Email: {q.customerEmail}
+              </Text>
+            ) : null}
           </View>
+          {(q.shipToName || q.shipToAddress || q.shipToPlace) ? (
+            <View style={[styles.customerBlock, { paddingLeft: 6, borderLeftWidth: 1, borderColor: "#ddd" }]}>
+              <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 7, color: "#555", marginBottom: 2 }}>SHIP TO (CONSIGNEE)</Text>
+              <Text style={styles.customerName}>{q.shipToName || "-"}</Text>
+              {q.shipToAddress ? (
+                <Text style={styles.customerDetail}>
+                  Address: {q.shipToAddress}
+                </Text>
+              ) : null}
+              {q.shipToPlace ? (
+                <Text style={styles.customerDetail}>
+                  Place: {q.shipToPlace}
+                </Text>
+              ) : null}
+              {q.shipToGstin ? (
+                <Text style={styles.customerDetail}>
+                  GSTIN: {q.shipToGstin}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.metaBlock}>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Quot. No:</Text>
@@ -289,8 +333,14 @@ function QuotationPDFDocument({
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Ref. No:</Text>
-              <Text style={styles.metaValue}>{q.refNo}</Text>
+              <Text style={styles.metaValue}>{q.refNo || "-"}</Text>
             </View>
+            {q.deliveryNote ? (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Del. Note:</Text>
+                <Text style={styles.metaValue}>{q.deliveryNote}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -395,13 +445,11 @@ function QuotationPDFDocument({
           <Text style={styles.amountInWords}>{q.amountInWords}</Text>
         </View>
 
-        {/* ── Seal / Signature Space ───────────────────────────── */}
-        <View style={styles.sealSpacer} />
-
         {/* ── Signature + Footer — wrapped to keep as a block ─── */}
         <View style={styles.footer} wrap={false}>
           <View style={styles.signature}>
             <Text>For {cs.companyName}</Text>
+            <View style={{ height: 36 }} /> {/* Space for Seal / Signature */}
             <Text style={styles.signatory}>Authorized Signatory</Text>
           </View>
 
@@ -428,9 +476,33 @@ function QuotationPDFDocument({
                 <Text>Payment: {q.paymentTerms || "READY PAYMENT"}</Text>
               </View>
               <Text style={styles.disclaimer}>{cs.disclaimerText}</Text>
-              <Text style={styles.bankDetails}>
-                Bank: {cs.bankDetails}
-              </Text>
+              {(() => {
+                const raw = cs.bankDetails || "";
+                let lines: string[] = [];
+                if (raw.includes("\n")) {
+                  lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+                } else if (raw.includes(" - ")) {
+                  lines = raw.split(" - ").map(l => l.trim()).filter(Boolean);
+                } else if (raw.includes(" | ")) {
+                  lines = raw.split(" | ").map(l => l.trim()).filter(Boolean);
+                } else if (raw.trim()) {
+                  lines = [raw.trim()];
+                }
+                return lines.map((line, i) => (
+                  <Text style={styles.bankDetails} key={i}>
+                    {i === 0 && !line.toLowerCase().startsWith("bank") ? `Bank: ${line}` : line}
+                  </Text>
+                ));
+              })()}
+              {cs.declarationText ? (
+                <Text style={{ fontSize: 5, color: "#555", marginTop: 2, fontFamily: "Helvetica-Oblique" }}>
+                  Declaration: {cs.declarationText}
+                </Text>
+              ) : null}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 3, paddingTop: 2, borderTopWidth: 0.5, borderColor: "#ccc" }}>
+                <Text style={{ fontSize: 5, color: "#666" }}>{cs.jurisdiction || "Subject to Pala Jurisdiction"}</Text>
+                <Text style={{ fontSize: 5, color: "#666", fontFamily: "Helvetica-Bold" }}>This is a Computer Generated Invoice/Quotation</Text>
+              </View>
             </View>
           </View>
         </View>

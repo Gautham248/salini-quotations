@@ -15,6 +15,9 @@ export interface StorePreviewSettings {
   disclaimerText: string;
   loadingNote: string;
   paymentQrCode?: string | null;
+  pan?: string | null;
+  declarationText?: string | null;
+  jurisdiction?: string | null;
 }
 
 const DEFAULT_STORE: StorePreviewSettings = {
@@ -26,7 +29,24 @@ const DEFAULT_STORE: StorePreviewSettings = {
   bankDetails: "State Bank of India, SME Branch Pala - A/C: 42459778328 - IFSC: SBIN0063661",
   disclaimerText: "Certified that the particulars given above are true and correct.",
   loadingNote: "LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA",
+  declarationText: "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+  jurisdiction: "Subject to Pala Jurisdiction",
 };
+
+export function formatBankDetailsLines(raw?: string | null): string[] {
+  if (!raw || !raw.trim()) return [];
+  const text = raw.trim();
+  if (text.includes("\n")) {
+    return text.split("\n").map(l => l.trim()).filter(Boolean);
+  }
+  if (text.includes(" - ")) {
+    return text.split(" - ").map(l => l.trim()).filter(Boolean);
+  }
+  if (text.includes(" | ")) {
+    return text.split(" | ").map(l => l.trim()).filter(Boolean);
+  }
+  return [text];
+}
 
 export function QuotationPreview({
   header,
@@ -54,28 +74,48 @@ export function QuotationPreview({
     totalLoadingCharges: totals?.totalLoadingCharges ?? 0,
   };
 
+  const hasShipTo = Boolean(header?.shipToName || header?.shipToAddress || header?.shipToPlace);
+  const bankLines = formatBankDetailsLines(cs.bankDetails);
+
   return (
     <div className="border rounded-md bg-white text-black p-4 font-sans text-xs shadow-sm h-full overflow-auto">
       <div className="text-center mb-3">
         <h2 className="text-sm font-bold">{cs.companyName}</h2>
         <p className="text-xs font-bold">{cs.subheading}</p>
-        <p className="text-[10px]">Ph: {cs.phone}, Mob: {cs.mobile}</p>
-        <p className="text-[11px] font-bold">GSTIN: {cs.gstin}</p>
+        <p className="text-[10px]">
+          Ph: {cs.phone}{cs.mobile ? `, Mob: ${cs.mobile}` : ""}{cs.email ? `, Email: ${cs.email}` : ""}
+        </p>
+        <p className="text-[11px] font-bold">
+          GSTIN: {cs.gstin}{cs.pan ? ` | PAN: ${cs.pan}` : ""}
+        </p>
       </div>
       <div className="text-center font-bold text-xs border border-black py-1 mb-2">Quotation</div>
-      <table className="w-full mb-2 text-[11px]">
+      <table className="w-full mb-2 text-[10px] border border-black border-collapse">
         <tbody>
           <tr>
-            <td className="w-1/2 align-top">
+            <td className={`${hasShipTo ? "w-1/3" : "w-1/2"} align-top p-1.5 border-r border-black`}>
+              <p className="font-bold text-[9px] uppercase tracking-wider text-gray-700 mb-0.5">Bill To (Buyer)</p>
               <strong>{header?.customerName || "(Name)"}</strong>
               {header?.customerAddress && <><br />Address: {header.customerAddress}</>}
               {header?.customerPlace && <><br />Place: {header.customerPlace}</>}
               {header?.customerGstin && <><br />GSTIN: {header.customerGstin}</>}
+              {header?.customerPhone && <><br />Ph: {header.customerPhone}</>}
+              {header?.customerEmail && <><br />Email: {header.customerEmail}</>}
             </td>
-            <td className="w-1/2 align-top">
+            {hasShipTo && (
+              <td className="w-1/3 align-top p-1.5 border-r border-black">
+                <p className="font-bold text-[9px] uppercase tracking-wider text-gray-700 mb-0.5">Ship To (Consignee)</p>
+                <strong>{header?.shipToName || "-"}</strong>
+                {header?.shipToAddress && <><br />Address: {header.shipToAddress}</>}
+                {header?.shipToPlace && <><br />Place: {header.shipToPlace}</>}
+                {header?.shipToGstin && <><br />GSTIN: {header.shipToGstin}</>}
+              </td>
+            )}
+            <td className={`${hasShipTo ? "w-1/3" : "w-1/2"} align-top p-1.5`}>
               <strong>Quot. No</strong>: {displayQuotNo}<br />
               <strong>Date</strong>: {header?.quotDate ? formatDate(new Date(header.quotDate)) : ""}<br />
-              <strong>Ref. No</strong>: {header?.refNo}
+              <strong>Ref. No</strong>: {header?.refNo || "-"}<br />
+              {header?.deliveryNote && <><strong>Delivery Note</strong>: {header.deliveryNote}<br /></>}
             </td>
           </tr>
         </tbody>
@@ -151,9 +191,10 @@ export function QuotationPreview({
         <span className="font-bold">{amountInWords(safeTotals.netAmount)}</span>
       </div>
       <div className="text-[10px]">
-        <div className="text-right mb-2">
+        <div className="text-right mb-2 flex flex-col items-end">
           <p className="font-bold">For {cs.companyName}</p>
-          <p>Authorized Signatory</p>
+          <div className="h-12" /> {/* Space for Seal / Signature */}
+          <p className="text-[9px]">Authorized Signatory</p>
         </div>
         <p className="font-bold">{cs.loadingNote}</p>
         {/* Footer: QR on left, terms on right (Option C) */}
@@ -179,7 +220,24 @@ export function QuotationPreview({
               <span>Payment: {header?.paymentTerms}</span>
             </div>
             <p className="mt-1 text-[9px]">{cs.disclaimerText}</p>
-            <p className="font-bold text-[9px]">Bank: {cs.bankDetails}</p>
+            {bankLines.length > 0 && (
+              <div className="font-bold text-[9px] mt-0.5">
+                {bankLines.map((line, i) => (
+                  <p key={i}>
+                    {i === 0 && !line.toLowerCase().startsWith("bank") ? `Bank: ${line}` : line}
+                  </p>
+                ))}
+              </div>
+            )}
+            {cs.declarationText && (
+              <p className="mt-1 text-[8px] text-gray-600 italic">
+                Declaration: {cs.declarationText}
+              </p>
+            )}
+            <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-gray-200 text-[8px] text-gray-500">
+              <span>{cs.jurisdiction || "Subject to Pala Jurisdiction"}</span>
+              <span className="font-medium">This is a Computer Generated Invoice/Quotation</span>
+            </div>
           </div>
         </div>
       </div>

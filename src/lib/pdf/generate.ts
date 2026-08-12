@@ -12,6 +12,13 @@ function mapToQuotationData(q: Record<string, unknown>): QuotationData {
     customerAddress: (q.customerAddress as string) || null,
     customerPlace: (q.customerPlace as string) || null,
     customerGstin: (q.customerGstin as string) || null,
+    customerPhone: (q.customerPhone as string) || null,
+    customerEmail: (q.customerEmail as string) || null,
+    shipToName: (q.shipToName as string) || null,
+    shipToAddress: (q.shipToAddress as string) || null,
+    shipToPlace: (q.shipToPlace as string) || null,
+    shipToGstin: (q.shipToGstin as string) || null,
+    deliveryNote: (q.deliveryNote as string) || null,
     deliveryTerms: (q.deliveryTerms as string) || null,
     gstNote: (q.gstNote as string) || null,
     validity: (q.validity as string) || "LIMITED",
@@ -66,6 +73,9 @@ function mapToCompanySettings(
       cs.loadingNote ||
       "LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA",
     paymentQrCode: cs.paymentQrCode || null,
+    pan: cs.pan || null,
+    declarationText: cs.declarationText || "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+    jurisdiction: cs.jurisdiction || "Subject to Pala Jurisdiction",
   };
 }
 

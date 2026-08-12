@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -29,6 +30,9 @@ export default function SettingsPage() {
     disclaimerText: "",
     loadingNote: "",
     paymentQrCode: null as string | null,
+    pan: "",
+    declarationText: "",
+    jurisdiction: "",
   });
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -168,6 +172,14 @@ export default function SettingsPage() {
                         onChange={(e) => setS({ ...s, gstin: e.target.value })}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Company PAN</Label>
+                      <Input
+                        value={s.pan || ""}
+                        onChange={(e) => setS({ ...s, pan: e.target.value })}
+                        placeholder="e.g. ABCDE1234F"
+                      />
+                    </div>
                   </div>
 
                   <Separator />
@@ -177,11 +189,28 @@ export default function SettingsPage() {
                       Bank &amp; Document Notices
                     </h3>
                     <div className="space-y-1.5">
-                      <Label className="text-[13px]">Bank Details</Label>
-                      <Input
+                      <Label className="text-[13px]">Bank Details (Supports multiple lines)</Label>
+                      <Textarea
+                        rows={3}
                         value={s.bankDetails}
                         onChange={(e) => setS({ ...s, bankDetails: e.target.value })}
-                        placeholder="Bank name, branch, account details"
+                        placeholder="State Bank of India, SME Branch Pala&#10;A/C: 42459778328&#10;IFSC: SBIN0063661"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Declaration Statement</Label>
+                      <Input
+                        value={s.declarationText || ""}
+                        onChange={(e) => setS({ ...s, declarationText: e.target.value })}
+                        placeholder="We declare that this invoice shows the actual price..."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Jurisdiction Clause</Label>
+                      <Input
+                        value={s.jurisdiction || ""}
+                        onChange={(e) => setS({ ...s, jurisdiction: e.target.value })}
+                        placeholder="e.g. Subject to Pala Jurisdiction"
                       />
                     </div>
                     <div className="space-y-1.5">

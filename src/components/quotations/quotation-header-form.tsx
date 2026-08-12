@@ -10,6 +10,13 @@ export interface QH {
   customerAddress: string;
   customerPlace: string;
   customerGstin: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  shipToName?: string;
+  shipToAddress?: string;
+  shipToPlace?: string;
+  shipToGstin?: string;
+  deliveryNote?: string;
   quotDate: string;
   refNo: string;
   deliveryTerms: string;
@@ -38,16 +45,16 @@ export function QuotationHeaderForm({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-5 space-y-5">
-        {/* Customer Information Sub-section */}
+        {/* Bill To (Buyer) Sub-section */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Customer Information
+            Bill To (Buyer Details)
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2 space-y-1">
-              <Label className="text-xs font-medium">Customer Name *</Label>
+              <Label className="text-xs font-medium">Buyer Name *</Label>
               <Input
-                placeholder="Enter customer / company name"
+                placeholder="Enter buyer / company name"
                 value={header.customerName}
                 onChange={e => onChange("customerName", e.target.value)}
                 disabled={readOnly}
@@ -55,11 +62,34 @@ export function QuotationHeaderForm({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-medium">Customer GSTIN</Label>
+              <Label className="text-xs font-medium">Buyer GSTIN</Label>
               <Input
                 placeholder="e.g. 32AAACS12341Z"
                 value={header.customerGstin}
                 onChange={e => onChange("customerGstin", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Buyer Phone</Label>
+              <Input
+                placeholder="Phone / Mobile #"
+                value={header.customerPhone || ""}
+                onChange={e => onChange("customerPhone", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Buyer Email</Label>
+              <Input
+                type="email"
+                placeholder="buyer@example.com"
+                value={header.customerEmail || ""}
+                onChange={e => onChange("customerEmail", e.target.value)}
                 disabled={readOnly}
                 className="h-9 text-sm"
               />
@@ -89,13 +119,64 @@ export function QuotationHeaderForm({
           </div>
         </div>
 
+        {/* Ship To (Consignee) Sub-section */}
+        <div className="border-t pt-4 space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Ship To (Consignee Details)
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 space-y-1">
+              <Label className="text-xs font-medium">Consignee Name</Label>
+              <Input
+                placeholder="Shipping party / destination name"
+                value={header.shipToName || ""}
+                onChange={e => onChange("shipToName", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Consignee GSTIN</Label>
+              <Input
+                placeholder="Shipping GSTIN (if applicable)"
+                value={header.shipToGstin || ""}
+                onChange={e => onChange("shipToGstin", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 space-y-1">
+              <Label className="text-xs font-medium">Shipping Address</Label>
+              <Input
+                placeholder="Delivery street address or site"
+                value={header.shipToAddress || ""}
+                onChange={e => onChange("shipToAddress", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Shipping Place / City</Label>
+              <Input
+                placeholder="Destination city / site location"
+                value={header.shipToPlace || ""}
+                onChange={e => onChange("shipToPlace", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Quotation Details & Terms Sub-section */}
         <div className="border-t pt-4 space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
             Quotation Details &amp; Terms
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-medium">Date</Label>
               <Input
@@ -120,6 +201,16 @@ export function QuotationHeaderForm({
                 placeholder="Reference #"
                 value={header.refNo}
                 onChange={e => onChange("refNo", e.target.value)}
+                disabled={readOnly}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Delivery Note</Label>
+              <Input
+                placeholder="Dispatch / Note #"
+                value={header.deliveryNote || ""}
+                onChange={e => onChange("deliveryNote", e.target.value)}
                 disabled={readOnly}
                 className="h-9 text-sm"
               />

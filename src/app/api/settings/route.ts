@@ -37,6 +37,9 @@ export async function PUT(req: Request) {
         disclaimerText: b.disclaimerText ?? existing.disclaimerText,
         loadingNote: b.loadingNote ?? existing.loadingNote,
         paymentQrCode: b.paymentQrCode ?? existing.paymentQrCode,
+        pan: b.pan ?? existing.pan,
+        declarationText: b.declarationText ?? existing.declarationText,
+        jurisdiction: b.jurisdiction ?? existing.jurisdiction,
       },
     });
     return Response.json(u);
@@ -55,6 +58,9 @@ export async function PUT(req: Request) {
       disclaimerText: b.disclaimerText || "",
       loadingNote: b.loadingNote || "",
       paymentQrCode: b.paymentQrCode || null,
+      pan: b.pan || null,
+      declarationText: b.declarationText || null,
+      jurisdiction: b.jurisdiction || null,
     },
   });
   return Response.json(c, { status: 201 });

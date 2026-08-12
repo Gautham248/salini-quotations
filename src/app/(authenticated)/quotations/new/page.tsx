@@ -115,8 +115,8 @@ function NewQuotationContent() {
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm max-w-full overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-3">
               <Link href="/quotations">
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
@@ -140,11 +140,11 @@ function NewQuotationContent() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 flex-wrap justify-start md:justify-end shrink-0">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm"
+              className="h-8 text-xs shrink-0"
               onClick={() => quote.manualSave()}
               disabled={quote.saving}
             >
@@ -154,7 +154,7 @@ function NewQuotationContent() {
             {/* Mobile Preview & Download */}
             <Button
               size="sm"
-              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm lg:hidden"
+              className="h-8 text-xs lg:hidden shrink-0"
               onClick={() => setPreviewOpen(true)}
               disabled={finalizing}
             >
@@ -162,7 +162,7 @@ function NewQuotationContent() {
               <span>Preview &amp; Download</span>
             </Button>
             {/* Desktop Generate PDF */}
-            <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
+            <Button size="sm" className="h-8 text-xs hidden lg:flex shrink-0 whitespace-nowrap" onClick={finalize} disabled={finalizing}>
               {finalizing ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
               ) : (

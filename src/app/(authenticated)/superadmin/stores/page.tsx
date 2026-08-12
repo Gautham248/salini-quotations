@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import {
@@ -28,6 +29,7 @@ interface StoreDetail extends StoreInfo {
     companyName: string; subheading: string; phone: string; mobile: string;
     email: string; gstin: string; bankDetails: string; disclaimerText: string;
     loadingNote: string; paymentQrCode?: string | null;
+    pan?: string | null; declarationText?: string | null; jurisdiction?: string | null;
   } | null;
 }
 
@@ -37,12 +39,14 @@ interface EditForm {
   email: string; gstin: string; bankDetails: string;
   disclaimerText: string; loadingNote: string;
   paymentQrCode: string | null;
+  pan: string; declarationText: string; jurisdiction: string;
 }
 
 const EMPTY_EDIT: EditForm = {
   name: "", slug: "", companyName: "", subheading: "", phone: "", mobile: "",
   email: "", gstin: "", bankDetails: "", disclaimerText: "", loadingNote: "",
   paymentQrCode: null,
+  pan: "", declarationText: "", jurisdiction: "",
 };
 
 export default function StoresPage() {
@@ -177,6 +181,9 @@ export default function StoresPage() {
         disclaimerText: detail.settings?.disclaimerText || "",
         loadingNote: detail.settings?.loadingNote || "",
         paymentQrCode: detail.settings?.paymentQrCode ?? null,
+        pan: detail.settings?.pan || "",
+        declarationText: detail.settings?.declarationText || "",
+        jurisdiction: detail.settings?.jurisdiction || "",
       });
     } catch {
       toast.error("Failed to load store details");
@@ -447,8 +454,13 @@ export default function StoresPage() {
                 </h3>
                 <div className="grid grid-cols-1 gap-3.5">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Bank Details</Label>
-                    <Input value={bankDetails} onChange={e => setBankDetails(e.target.value)} placeholder="Bank name, account no, branch, IFSC" />
+                    <Label className="text-xs font-medium">Bank Details (Supports multiple lines)</Label>
+                    <Textarea
+                      rows={3}
+                      value={bankDetails}
+                      onChange={e => setBankDetails(e.target.value)}
+                      placeholder="Bank name, account no, branch, IFSC"
+                    />
                   </div>
                 </div>
               </div>
@@ -571,6 +583,14 @@ export default function StoresPage() {
                         onChange={e => setEditForm({ ...editForm, gstin: e.target.value })}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Company PAN</Label>
+                      <Input
+                        value={editForm.pan}
+                        onChange={e => setEditForm({ ...editForm, pan: e.target.value })}
+                        placeholder="e.g. ABCDE1234F"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -583,11 +603,28 @@ export default function StoresPage() {
                   </h3>
                   <div className="grid grid-cols-1 gap-3.5">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Bank Details</Label>
-                      <Input
+                      <Label className="text-xs font-medium">Bank Details (Supports multiple lines)</Label>
+                      <Textarea
+                        rows={3}
                         value={editForm.bankDetails}
                         onChange={e => setEditForm({ ...editForm, bankDetails: e.target.value })}
-                        placeholder="Bank name, branch, account details"
+                        placeholder="State Bank of India, SME Branch Pala&#10;A/C: 42459778328&#10;IFSC: SBIN0063661"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Declaration Statement</Label>
+                      <Input
+                        value={editForm.declarationText}
+                        onChange={e => setEditForm({ ...editForm, declarationText: e.target.value })}
+                        placeholder="We declare that this invoice shows the actual price..."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Jurisdiction Clause</Label>
+                      <Input
+                        value={editForm.jurisdiction}
+                        onChange={e => setEditForm({ ...editForm, jurisdiction: e.target.value })}
+                        placeholder="e.g. Subject to Pala Jurisdiction"
                       />
                     </div>
                     <div className="space-y-1.5">

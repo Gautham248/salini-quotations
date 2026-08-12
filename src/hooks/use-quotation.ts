@@ -13,12 +13,53 @@ export interface LineItem {
   gstMode: string;
   loadingCharges: number;
 }
-export interface QuotationHeader { customerName: string; customerAddress: string; customerPlace: string; customerGstin: string; quotDate: string; refNo: string; deliveryTerms: string; gstNote: string; validity: string; paymentTerms: string; }
-const DH: QuotationHeader = { customerName: "", customerAddress: "", customerPlace: "", customerGstin: "", quotDate: new Date().toISOString().slice(0,10), refNo: "", deliveryTerms: "", gstNote: "", validity: "LIMITED", paymentTerms: "READY PAYMENT" };
+export interface QuotationHeader {
+  customerName: string;
+  customerAddress: string;
+  customerPlace: string;
+  customerGstin: string;
+  customerPhone: string;
+  customerEmail: string;
+  shipToName: string;
+  shipToAddress: string;
+  shipToPlace: string;
+  shipToGstin: string;
+  deliveryNote: string;
+  quotDate: string;
+  refNo: string;
+  deliveryTerms: string;
+  gstNote: string;
+  validity: string;
+  paymentTerms: string;
+}
+const DH: QuotationHeader = {
+  customerName: "",
+  customerAddress: "",
+  customerPlace: "",
+  customerGstin: "",
+  customerPhone: "",
+  customerEmail: "",
+  shipToName: "",
+  shipToAddress: "",
+  shipToPlace: "",
+  shipToGstin: "",
+  deliveryNote: "",
+  quotDate: new Date().toISOString().slice(0,10),
+  refNo: "",
+  deliveryTerms: "",
+  gstNote: "",
+  validity: "LIMITED",
+  paymentTerms: "READY PAYMENT"
+};
 
 function calcNetValue(item: LineItem): number {
-  if (item.quoteMode === "weight" && item.weightPerUnit && item.weightPerUnit > 0) {
-    return computeNetValue((item.weightKg ?? 0) / item.weightPerUnit, item.rate);
+  if (item.quoteMode === "weight") {
+    if (item.weightPerUnit && item.weightPerUnit > 0) {
+      return computeNetValue((item.weightKg ?? 0) / item.weightPerUnit, item.rate);
+    }
+    if (item.weightKg != null && item.weightKg > 0) {
+      return computeNetValue(item.weightKg, item.rate);
+    }
   }
   if (item.quoteMode === "pieces" && item.piecesPerUnit && item.piecesPerUnit > 0) {
     return computeNetValue((item.pieceCount ?? 0) / item.piecesPerUnit, item.rate);
@@ -72,18 +113,25 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
         .then(r => r.json())
         .then(d => {
           const loadedHeader = {
-            customerName: d.customerName,
+            customerName: d.customerName || "",
             customerAddress: d.customerAddress || "",
             customerPlace: d.customerPlace || "",
             customerGstin: d.customerGstin || "",
+            customerPhone: d.customerPhone || "",
+            customerEmail: d.customerEmail || "",
+            shipToName: d.shipToName || "",
+            shipToAddress: d.shipToAddress || "",
+            shipToPlace: d.shipToPlace || "",
+            shipToGstin: d.shipToGstin || "",
+            deliveryNote: d.deliveryNote || "",
             quotDate: d.quotDate && !isNaN(new Date(d.quotDate).getTime())
               ? new Date(d.quotDate).toISOString().slice(0, 10)
               : new Date().toISOString().slice(0, 10),
-            refNo: d.refNo,
+            refNo: d.refNo || "",
             deliveryTerms: d.deliveryTerms || "",
             gstNote: d.gstNote || "",
-            validity: d.validity,
-            paymentTerms: d.paymentTerms,
+            validity: d.validity || "LIMITED",
+            paymentTerms: d.paymentTerms || "READY PAYMENT",
           };
           setHeader(loadedHeader);
           headerRef.current = loadedHeader;

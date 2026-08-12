@@ -3,7 +3,7 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 import path from "path";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient;
+  prisma?: PrismaClient;
   _schemaEnsured?: boolean;
 };
 
