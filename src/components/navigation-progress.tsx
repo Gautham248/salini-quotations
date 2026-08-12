@@ -11,16 +11,13 @@ export function NavigationProgress() {
   const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Start the bar as soon as the URL changes
     let cancelled = false;
 
-    // Animate to ~70% quickly, then hold
     let start: number | null = null;
     function tick(ts: number) {
       if (cancelled || !barRef.current) return;
       if (!start) start = ts;
       const elapsed = ts - start;
-      // Ease-out: fast to 70% in 800ms, then slow crawl
       const pct = Math.min(0.7 + (elapsed > 800 ? (elapsed - 800) * 0.0003 : (elapsed / 800) * 0.7), 0.9);
       barRef.current.style.transform = `scaleX(${pct})`;
       rafRef.current = requestAnimationFrame(tick);

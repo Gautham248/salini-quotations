@@ -535,10 +535,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
     markDirty();
   }
 
-  const totals = computeTotals(
-    lineItems.map(i => ({ ...i, gstMode: (i as LineItem).gstMode || "inclusive" })),
-    loadingCharges
-  );
+  const totals = computeTotals(lineItems, loadingCharges);
   return {
     id,
     quotNo,

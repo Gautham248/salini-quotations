@@ -30,7 +30,7 @@ CREATE TABLE "new_QuotationLineItem" (
     CONSTRAINT "QuotationLineItem_quotationId_fkey" FOREIGN KEY ("quotationId") REFERENCES "Quotation" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "QuotationLineItem_masterItemId_fkey" FOREIGN KEY ("masterItemId") REFERENCES "MasterItem" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
-INSERT INTO "new_QuotationLineItem" ("description", "gstPercent", "id", "isLocked", "lineNo", "masterItemId", "netValue", "pieceCount", "qty", "quotationId", "quoteMode", "rate", "unit", "weightKg") SELECT "description", "gstPercent", "id", "isLocked", "lineNo", "masterItemId", "netValue", "pieceCount", "qty", "quotationId", "quoteMode", "rate", "unit", "weightKg" FROM "QuotationLineItem";
+INSERT INTO "new_QuotationLineItem" ("description", "gstPercent", "id", "isLocked", "lineNo", "masterItemId", "netValue", "pieceCount", "qty", "quotationId", "quoteMode", "rate", "unit", "weightKg", "gstMode") SELECT "description", "gstPercent", "id", "isLocked", "lineNo", "masterItemId", "netValue", "pieceCount", "qty", "quotationId", "quoteMode", "rate", "unit", "weightKg", 'exclusive' FROM "QuotationLineItem";
 DROP TABLE "QuotationLineItem";
 ALTER TABLE "new_QuotationLineItem" RENAME TO "QuotationLineItem";
 PRAGMA foreign_keys=ON;
