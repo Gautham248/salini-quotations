@@ -9,7 +9,7 @@ function parseId(id: string): number {
   return isNaN(n) ? -1 : n;
 }
 
-async function getQuotation(id: number, storeId: number | null, userId: number, isSuperAdmin: boolean) {
+async function getQuotation(id: number, storeId: number | null, userId: number, canBypassStoreScope: boolean) {
   if (id <= 0) return null;
   const q = await db.quotation.findUnique({
     where: { id },
@@ -22,7 +22,7 @@ async function getQuotation(id: number, storeId: number | null, userId: number, 
   if (!q) return null;
 
   // Store-scoping: must belong to resolved store (or be superadmin)
-  if (!isSuperAdmin && storeId !== null && q.storeId !== storeId) return null;
+  if (!canBypassStoreScope && storeId !== null && q.storeId !== storeId) return null;
 
   // Staff: can only see their own quotations within their store
   // (server-side only check — admin/superadmin bypass)
@@ -36,9 +36,9 @@ export async function GET(
   const s = await requireAuth();
   const { id } = await params;
   const storeId = await resolveStoreId(_req);
-  const isSuperAdmin = s.user.role === "superadmin" || s.user.role === "manager";
+  const canBypassStoreScope = s.user.role === "superadmin" || s.user.role === "manager";
 
-  const q = await getQuotation(parseId(id), storeId, s.user.id, isSuperAdmin);
+  const q = await getQuotation(parseId(id), storeId, s.user.id, canBypassStoreScope);
   return q ? NextResponse.json(q) : NextResponse.json({ error: "Not found" }, { status: 404 });
 }
 
@@ -72,7 +72,7 @@ export async function PUT(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
 
   // Check document-level lock for non-admin users
   if (ex.isLocked && !isAdmin) {
@@ -89,7 +89,6 @@ export async function PUT(
 
   let totalsData: Record<string, unknown> = {};
   if (b.lineItems && Array.isArray(b.lineItems)) {
-    await db.quotationLineItem.deleteMany({ where: { quotationId: idn } });
     const validItems = b.lineItems.filter(
       (item: Record<string, unknown>) =>
         typeof item.description === "string" &&
@@ -109,7 +108,10 @@ export async function PUT(
           rate: i.rate as number,
           gstPercent: (i.gstPercent as number) || 0,
           netValue: typeof i.netValue === "number" ? (i.netValue as number) : undefined,
-        }))
+          gstExcludedRate: typeof i.gstExcludedRate === "number" ? (i.gstExcludedRate as number) : undefined,
+          gstMode: (i.gstMode as string) || "inclusive",
+        })),
+        typeof b.loadingCharges === "number" ? b.loadingCharges : (ex.loadingCharges ?? 0)
       );
       totalsData = {
         subTotal: totals.subTotal,
@@ -118,24 +120,33 @@ export async function PUT(
         roundOff: totals.roundOff,
         netAmount: totals.netAmount,
         amountInWords: amountInWords(totals.netAmount),
+        loadingCharges: totals.totalLoadingCharges,
       };
 
-      await db.quotationLineItem.createMany({
-        data: validItems.map((item: Record<string, unknown>, idx: number) => ({
-          quotationId: idn,
-          masterItemId: (item.masterItemId as number) || null,
-          lineNo: (item.lineNo as number) ?? idx + 1,
-          description: item.description as string,
-          unit: item.unit as string,
-          rate: item.rate as number,
-          gstPercent: item.gstPercent as number,
-          qty: item.qty as number,
-          netValue: item.netValue as number,
-          quoteMode: (item.quoteMode as string) || "quantity",
-          weightKg: (item.weightKg as number) || null,
-          pieceCount: (item.pieceCount as number) || null,
-          isLocked: Boolean(item.isLocked),
-        })),
+      await db.$transaction(async (tx) => {
+        await tx.quotationLineItem.deleteMany({ where: { quotationId: idn } });
+        await tx.quotationLineItem.createMany({
+          data: validItems.map((item: Record<string, unknown>, idx: number) => ({
+            quotationId: idn,
+            masterItemId: (item.masterItemId as number) || null,
+            lineNo: (item.lineNo as number) ?? idx + 1,
+            description: item.description as string,
+            unit: item.unit as string,
+            rate: item.rate as number,
+            gstPercent: item.gstPercent as number,
+            qty: item.qty as number,
+            netValue: item.netValue as number,
+            quoteMode: (item.quoteMode as string) || "quantity",
+            weightKg: (item.weightKg as number) || null,
+            pieceCount: (item.pieceCount as number) || null,
+            isLocked: Boolean(item.isLocked),
+            remark: (item.remark as string) || null,
+            altQty: (item.altQty as number) || null,
+            altUnit: (item.altUnit as string) || null,
+            gstMode: (item.gstMode as string) || "inclusive",
+            loadingCharges: (item.loadingCharges as number) || null,
+          })),
+        });
       });
     } else {
       totalsData = {
@@ -159,6 +170,13 @@ export async function PUT(
       customerAddress: b.customerAddress,
       customerPlace: b.customerPlace,
       customerGstin: b.customerGstin,
+      customerPhone: b.customerPhone,
+      customerEmail: b.customerEmail,
+      shipToName: b.shipToName,
+      shipToAddress: b.shipToAddress,
+      shipToPlace: b.shipToPlace,
+      shipToGstin: b.shipToGstin,
+      deliveryNote: b.deliveryNote,
       deliveryTerms: b.deliveryTerms,
       gstNote: b.gstNote,
       validity: b.validity ?? ex.validity,
@@ -166,6 +184,7 @@ export async function PUT(
       status: b.status ?? ex.status,
       isLocked: b.isLocked !== undefined ? Boolean(b.isLocked) : ex.isLocked,
       updatedById: s.user.id,
+      loadingCharges: typeof b.loadingCharges === "number" ? b.loadingCharges : ex.loadingCharges,
       ...totalsData,
     },
   });

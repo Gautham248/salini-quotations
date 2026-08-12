@@ -17,6 +17,11 @@ export const lineItemSchema = z.object({
   pieceCount: z.number().finite().int().min(0).nullable(),
   piecesPerUnit: z.number().finite().int().positive().nullable(),
   isLocked: z.boolean().optional(),
+  remark: z.string().optional(),
+  altQty: z.number().finite().nullable().optional(),
+  altUnit: z.string().nullable().optional(),
+  gstMode: z.enum(["inclusive", "exclusive"]).optional(),
+  loadingCharges: z.number().finite().min(0).nullable().optional(),
 });
 
 export const partialLineItemSchema = z.object({
@@ -31,6 +36,11 @@ export const partialLineItemSchema = z.object({
   quoteMode: z.enum(["quantity", "weight", "pieces"]),
   weightKg: z.number().finite().nullable().optional(),
   pieceCount: z.number().finite().int().nullable().optional(),
+  remark: z.string().optional(),
+  altQty: z.number().finite().nullable().optional(),
+  altUnit: z.string().nullable().optional(),
+  gstMode: z.enum(["inclusive", "exclusive"]).optional(),
+  loadingCharges: z.number().finite().min(0).nullable().optional(),
 });
 
 export const quotationHeaderSchema = z.object({
@@ -44,6 +54,14 @@ export const quotationHeaderSchema = z.object({
   gstNote: z.string(),
   validity: z.string(),
   paymentTerms: z.string(),
+  customerPhone: z.string().optional(),
+  customerEmail: z.string().optional(),
+  shipToName: z.string().optional(),
+  shipToAddress: z.string().optional(),
+  shipToPlace: z.string().optional(),
+  shipToGstin: z.string().optional(),
+  deliveryNote: z.string().optional(),
+  loadingCharges: z.number().finite().min(0).nullable().optional(),
 });
 
 export const cartItemSchema = z.object({

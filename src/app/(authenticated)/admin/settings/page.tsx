@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -14,7 +15,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Settings2 } from "lucide-react";
+import { Settings2, QrCode, Trash2, Upload } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -28,9 +29,14 @@ export default function SettingsPage() {
     bankDetails: "",
     disclaimerText: "",
     loadingNote: "",
+    paymentQrCode: null as string | null,
+    pan: "",
+    declarationText: "",
+    jurisdiction: "",
   });
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const qrInputRef = useRef<HTMLInputElement>(null);
 
   const role = session?.user?.role;
 
@@ -54,6 +60,22 @@ export default function SettingsPage() {
     });
     toast[r.ok ? "success" : "error"](r.ok ? "Settings saved" : "Save failed");
     setLoading(false);
+  }
+
+  function handleQrFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) {
+      toast.error("QR image must be under 512 KB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setS((prev) => ({ ...prev, paymentQrCode: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+    // reset so same file can be re-selected
+    e.target.value = "";
   }
 
   return (
@@ -150,6 +172,14 @@ export default function SettingsPage() {
                         onChange={(e) => setS({ ...s, gstin: e.target.value })}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Company PAN</Label>
+                      <Input
+                        value={s.pan || ""}
+                        onChange={(e) => setS({ ...s, pan: e.target.value })}
+                        placeholder="e.g. ABCDE1234F"
+                      />
+                    </div>
                   </div>
 
                   <Separator />
@@ -159,11 +189,28 @@ export default function SettingsPage() {
                       Bank &amp; Document Notices
                     </h3>
                     <div className="space-y-1.5">
-                      <Label className="text-[13px]">Bank Details</Label>
-                      <Input
+                      <Label className="text-[13px]">Bank Details (Supports multiple lines)</Label>
+                      <Textarea
+                        rows={3}
                         value={s.bankDetails}
                         onChange={(e) => setS({ ...s, bankDetails: e.target.value })}
-                        placeholder="Bank name, branch, account details"
+                        placeholder="State Bank of India, SME Branch Pala&#10;A/C: 42459778328&#10;IFSC: SBIN0063661"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Declaration Statement</Label>
+                      <Input
+                        value={s.declarationText || ""}
+                        onChange={(e) => setS({ ...s, declarationText: e.target.value })}
+                        placeholder="We declare that this invoice shows the actual price..."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[13px]">Jurisdiction Clause</Label>
+                      <Input
+                        value={s.jurisdiction || ""}
+                        onChange={(e) => setS({ ...s, jurisdiction: e.target.value })}
+                        placeholder="e.g. Subject to Pala Jurisdiction"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -182,6 +229,71 @@ export default function SettingsPage() {
                         placeholder="e.g. LOADING CHARGE EXTRA"
                       />
                     </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Payment QR Code
+                      </h3>
+                    </div>
+                    <p className="text-[12px] text-muted-foreground">
+                      Shown on the left side of the invoice footer alongside delivery &amp; payment terms.
+                    </p>
+                    {s.paymentQrCode ? (
+                      <div className="flex items-start gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={s.paymentQrCode}
+                          alt="Payment QR Code"
+                          className="w-24 h-24 object-contain border rounded-md bg-white p-1"
+                        />
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => qrInputRef.current?.click()}
+                            className="gap-1.5"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Replace QR
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setS({ ...s, paymentQrCode: null })}
+                            className="gap-1.5 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove QR
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => qrInputRef.current?.click()}
+                        className="gap-1.5"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload QR Image
+                      </Button>
+                    )}
+                    <input
+                      ref={qrInputRef}
+                      id="qr-file-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleQrFile}
+                    />
                   </div>
 
                   <Button type="submit" disabled={loading} size="sm">

@@ -1,6 +1,4 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { useSession } from "next-auth/react";
 
 // Mock next-auth
 vi.mock("next-auth/react", () => ({

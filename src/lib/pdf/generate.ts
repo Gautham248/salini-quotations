@@ -12,6 +12,13 @@ function mapToQuotationData(q: Record<string, unknown>): QuotationData {
     customerAddress: (q.customerAddress as string) || null,
     customerPlace: (q.customerPlace as string) || null,
     customerGstin: (q.customerGstin as string) || null,
+    customerPhone: (q.customerPhone as string) || null,
+    customerEmail: (q.customerEmail as string) || null,
+    shipToName: (q.shipToName as string) || null,
+    shipToAddress: (q.shipToAddress as string) || null,
+    shipToPlace: (q.shipToPlace as string) || null,
+    shipToGstin: (q.shipToGstin as string) || null,
+    deliveryNote: (q.deliveryNote as string) || null,
     deliveryTerms: (q.deliveryTerms as string) || null,
     gstNote: (q.gstNote as string) || null,
     validity: (q.validity as string) || "LIMITED",
@@ -25,14 +32,21 @@ function mapToQuotationData(q: Record<string, unknown>): QuotationData {
         weightKg: (item.weightKg as number) ?? null,
         rate: (item.rate as number) || 0,
         netValue: (item.netValue as number) || 0,
+        remark: (item.remark as string) || null,
+        altQty: (item.altQty as number) ?? null,
+        altUnit: (item.altUnit as string) ?? null,
+        loadingCharges: (item.loadingCharges as number) ?? null,
+        gstExcludedRate: (item.gstExcludedRate as number) ?? undefined,
       })
     ),
     subTotal: (q.subTotal as number) || 0,
+    subTotalBeforeTax: (q.subTotalBeforeTax as number) ?? undefined,
     cgst: (q.cgst as number) || 0,
     sgst: (q.sgst as number) || 0,
     roundOff: (q.roundOff as number) || 0,
     netAmount: (q.netAmount as number) || 0,
     amountInWords: (q.amountInWords as string) || "",
+    loadingCharges: (q.loadingCharges as number) ?? null,
   };
 }
 
@@ -58,6 +72,10 @@ function mapToCompanySettings(
     loadingNote:
       cs.loadingNote ||
       "LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA",
+    paymentQrCode: cs.paymentQrCode || null,
+    pan: cs.pan || null,
+    declarationText: cs.declarationText || "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+    jurisdiction: cs.jurisdiction || "Subject to Pala Jurisdiction",
   };
 }
 

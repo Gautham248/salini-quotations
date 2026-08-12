@@ -2,12 +2,14 @@
 import { use, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuotation } from "@/hooks/use-quotation";
+import { cn } from "@/lib/utils";
 import { QuotationHeaderForm } from "@/components/quotations/quotation-header-form";
 import { QuotationLineItems } from "@/components/quotations/quotation-line-items";
 import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -59,13 +61,14 @@ export default function EditQuotationPage({
   const quote = useQuotation(parseInt(id));
 
   useEffect(() => {
-    fetch("/api/settings")
+    if (!quote.storeId) return;
+    fetch(`/api/settings?storeId=${quote.storeId}`)
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) setStoreSettings(data);
       })
       .catch(() => {});
-  }, []);
+  }, [quote.storeId]);
 
   const isDocumentLocked = Boolean(quote.isLocked);
   const isReadOnlyForStaff = !isAdmin && isDocumentLocked;
@@ -144,115 +147,120 @@ export default function EditQuotationPage({
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
-          <div className="flex items-center gap-3">
-            <Link href="/quotations">
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-[15px] font-semibold tracking-tight">
+        <div className="bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+            {/* Title + Bottom Status Chips */}
+            <div className="flex items-center gap-3 min-w-0">
+              <Link href="/quotations">
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <div className="flex flex-col justify-center min-w-0">
+                <h1 className="text-base font-semibold tracking-tight leading-tight whitespace-nowrap">
                   Edit Quotation
                 </h1>
-                <Badge
-                  variant={
-                    quote.status === "finalized" ? "default" : "secondary"
-                  }
-                  className="capitalize text-[11px]"
-                >
-                  {quote.status}
-                </Badge>
-                {isDocumentLocked && (
+                <div className="flex items-center gap-1.5 mt-1">
                   <Badge
-                    variant="outline"
-                    className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[11px] flex items-center gap-1"
+                    variant={
+                      quote.status === "finalized" ? "default" : "secondary"
+                    }
+                    className="capitalize text-[10px] px-1.5 py-0 font-normal shrink-0"
                   >
-                    <Lock className="h-3 w-3" /> Locked
+                    {quote.status}
                   </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5 text-[12px]">
-                {quote.dirty && (
-                  <span className="text-amber-600 font-medium">
-                    Unsaved changes
-                  </span>
-                )}
-                {quote.saving && (
-                  <span className="text-muted-foreground">Saving...</span>
-                )}
+                  {isDocumentLocked && (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] px-1.5 py-0 flex items-center gap-1 font-normal shrink-0"
+                    >
+                      <Lock className="h-2.5 w-2.5" /> Locked
+                    </Badge>
+                  )}
+                  {quote.dirty && (
+                    <span className="text-[11px] text-amber-600 font-medium whitespace-nowrap">
+                      • Unsaved
+                    </span>
+                  )}
+                  {quote.saving && (
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      • Saving...
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-            {isAdmin && (
-              <Button
-                variant={isDocumentLocked ? "destructive" : "outline"}
-                size="sm"
-                onClick={() => setShowDocLockDialog(true)}
-                className={
-                  isDocumentLocked
-                    ? "bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto col-span-1"
-                    : "border-amber-300 text-amber-800 hover:bg-amber-50 w-full sm:w-auto col-span-1"
-                }
-              >
-                {isDocumentLocked ? (
-                  <><Lock className="h-3.5 w-3.5 mr-1.5" /> Locked</>
-                ) : (
-                  <><Unlock className="h-3.5 w-3.5 mr-1.5" /> Lock to Staff</>
-                )}
-              </Button>
-            )}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap sm:justify-end min-w-0">
+              {isAdmin && (
+                <Button
+                  variant={isDocumentLocked ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={() => setShowDocLockDialog(true)}
+                  className={cn(
+                    "h-8 text-xs px-2.5 shrink-0",
+                    isDocumentLocked
+                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      : "border-amber-300 text-amber-800 hover:bg-amber-50"
+                  )}
+                >
+                  {isDocumentLocked ? (
+                    <><Lock className="h-3.5 w-3.5 mr-1" /> Locked</>
+                  ) : (
+                    <><Unlock className="h-3.5 w-3.5 mr-1" /> Lock to Staff</>
+                  )}
+                </Button>
+              )}
 
-            {!isReadOnlyForStaff && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto col-span-1"
-                onClick={() => quote.manualSave()}
-                disabled={quote.saving}
-              >
-                <Save className="h-3.5 w-3.5 mr-1.5" />
-                Save Draft
-              </Button>
-            )}
+              {!isReadOnlyForStaff && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs px-2.5 shrink-0"
+                  onClick={() => quote.manualSave()}
+                  disabled={quote.saving}
+                >
+                  <Save className="h-3.5 w-3.5 mr-1" />
+                  Save Draft
+                </Button>
+              )}
 
-            {isAdmin && quote.status === "finalized" && (
-              <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="w-full sm:w-auto col-span-2 sm:col-span-1">
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Mark as Draft
-              </Button>
-            )}
+              {isAdmin && quote.status === "finalized" && (
+                <Button variant="ghost" size="sm" onClick={handleMarkAsDraft} className="h-8 text-xs px-2.5 shrink-0">
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Mark as Draft
+                </Button>
+              )}
 
-            {/* Mobile Preview & Download button */}
-            {!isReadOnlyForStaff && (
-              <Button
-                size="sm"
-                className="w-full sm:w-auto lg:hidden text-xs sm:text-sm col-span-2 sm:col-span-1"
-                onClick={() => setPreviewOpen(true)}
-                disabled={finalizing}
-              >
-                <Eye className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                <span>Preview &amp; Download</span>
-              </Button>
-            )}
+              {/* Mobile Preview & Download button */}
+              {!isReadOnlyForStaff && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs lg:hidden shrink-0"
+                  onClick={() => setPreviewOpen(true)}
+                  disabled={finalizing}
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1 shrink-0" />
+                  <span>Preview &amp; Download</span>
+                </Button>
+              )}
 
-            {/* Desktop Finalize & Download button */}
-            {!isReadOnlyForStaff && (
-              <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
-                {finalizing ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : quote.status === "finalized" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
-                ) : (
-                  <FileDown className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                {quote.status === "finalized"
-                  ? "Re-Finalize & Download"
-                  : "Finalize & Download"}
-              </Button>
-            )}
+              {/* Desktop Finalize & Download button */}
+              {!isReadOnlyForStaff && (
+                <Button size="sm" className="h-8 text-xs px-3 hidden lg:flex shrink-0 whitespace-nowrap" onClick={finalize} disabled={finalizing}>
+                  {finalizing ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : quote.status === "finalized" ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-400" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {quote.status === "finalized"
+                    ? "Re-Finalize & Download"
+                    : "Finalize & Download"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -294,8 +302,25 @@ export default function EditQuotationPage({
             onClearDraft={() => {}}
             readOnly={isReadOnlyForStaff}
           />
-          <div className="mt-6 pt-4 border-t">
-            <QuotationTotals totals={quote.totals} />
+          <div className="mt-6 pt-4 border-t flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="globalLoadingCharges" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Loading Charges (₹)
+              </label>
+              <Input
+                id="globalLoadingCharges"
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-32 h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
+                value={quote.loadingCharges || ""}
+                onChange={e => quote.setLoadingCharges(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                disabled={isReadOnlyForStaff || quote.saving}
+              />
+            </div>
+            <div className="w-full md:w-80 shrink-0">
+              <QuotationTotals totals={quote.totals} />
+            </div>
           </div>
         </Card>
       </div>
@@ -381,7 +406,7 @@ export default function EditQuotationPage({
           <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
-                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <FileText className="h-[1.125rem] w-[1.125rem] text-primary shrink-0" />
                 <SheetTitle className="text-base font-semibold tracking-tight leading-none">
                   PDF Preview
                 </SheetTitle>

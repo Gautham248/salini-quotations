@@ -87,7 +87,6 @@ export async function POST(req: NextRequest) {
   }
 
   const b = await req.json().catch(() => ({}));
-
   const customerName =
     typeof b.customerName === "string" && b.customerName.trim()
       ? b.customerName.trim()
@@ -107,11 +106,19 @@ export async function POST(req: NextRequest) {
       customerAddress: b.customerAddress || null,
       customerPlace: b.customerPlace || null,
       customerGstin: b.customerGstin || null,
+      customerPhone: b.customerPhone || null,
+      customerEmail: b.customerEmail || null,
+      shipToName: b.shipToName || null,
+      shipToAddress: b.shipToAddress || null,
+      shipToPlace: b.shipToPlace || null,
+      shipToGstin: b.shipToGstin || null,
+      deliveryNote: b.deliveryNote || null,
       deliveryTerms: b.deliveryTerms || null,
       gstNote: b.gstNote || null,
       validity: b.validity || "LIMITED",
       paymentTerms: b.paymentTerms || "READY PAYMENT",
       createdById: s.user.id,
+      loadingCharges: typeof b.loadingCharges === "number" ? b.loadingCharges : null,
     },
   });
 
@@ -127,7 +134,10 @@ export async function POST(req: NextRequest) {
           rate: (i.rate as number) || 0,
           gstPercent: (i.gstPercent as number) || 0,
           netValue: typeof i.netValue === "number" ? i.netValue : undefined,
-        }))
+          gstExcludedRate: typeof i.gstExcludedRate === "number" ? i.gstExcludedRate : undefined,
+          gstMode: (i.gstMode as string) || "inclusive",
+        })),
+        typeof b.loadingCharges === "number" ? b.loadingCharges : 0
       );
 
       await db.quotationLineItem.createMany({
@@ -145,6 +155,11 @@ export async function POST(req: NextRequest) {
           weightKg: (item.weightKg as number) || null,
           pieceCount: (item.pieceCount as number) || null,
           isLocked: Boolean(item.isLocked),
+          remark: (item.remark as string) || null,
+          altQty: (item.altQty as number) || null,
+          altUnit: (item.altUnit as string) || null,
+          gstMode: (item.gstMode as string) || "inclusive",
+          loadingCharges: typeof item.loadingCharges === "number" ? item.loadingCharges : null,
         })),
       });
 

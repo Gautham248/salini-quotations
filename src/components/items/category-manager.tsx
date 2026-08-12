@@ -27,6 +27,7 @@ export function CategoryManager({ open, onOpenChange, onCategoriesChange }: {
     setCats(await r.json());
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (open) fetchCats(); }, [open]);
 
   async function create() {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth, requireAdmin } from "@/lib/auth-guards";
-import { getEffectiveRate } from "@/lib/item-rates";
 import { resolveStoreId } from "@/lib/auth-guards";
 
 export async function GET(req: NextRequest) {

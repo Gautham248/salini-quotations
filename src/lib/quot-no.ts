@@ -45,6 +45,8 @@ export async function nextQuotNo(storeId: number): Promise<string> {
       candidate = String(num);
     }
 
+    await tx.$queryRaw`UPDATE "StoreQuotSequence" SET "lastNumber" = ${num} WHERE "storeId" = ${storeId}`;
+
     return candidate;
   });
 }

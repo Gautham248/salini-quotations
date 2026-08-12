@@ -30,13 +30,13 @@ export async function PUT(
   const b = await req.json().catch(() => ({}));
   const { categoryIds, alternateUnits, ...rest } = b;
 
-  await db.itemCategory.deleteMany({ where: { itemId: numericId } });
-  if (alternateUnits !== undefined) {
-    await db.masterItemUnit.deleteMany({ where: { masterItemId: numericId } });
-  }
-
   try {
-    const item = await db.masterItem.update({
+    const item = await db.$transaction(async (tx) => {
+      await tx.itemCategory.deleteMany({ where: { itemId: numericId } });
+      if (alternateUnits !== undefined) {
+        await tx.masterItemUnit.deleteMany({ where: { masterItemId: numericId } });
+      }
+      return await tx.masterItem.update({
       where: { id: numericId },
       data: {
         description: rest.description,
@@ -58,6 +58,7 @@ export async function PUT(
           : undefined,
       },
       include: { unit: true, alternateUnits: { include: { unit: true } }, categories: { include: { category: true } }, createdBy: { select: { username: true } }, updatedBy: { select: { username: true } } },
+    });
     });
     return NextResponse.json(item);
   } catch {

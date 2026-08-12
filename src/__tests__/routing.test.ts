@@ -4,8 +4,6 @@ import { describe, it, expect } from "vitest";
 // Extracted from src/proxy.ts — middleware route gating
 // ──────────────────────────────────────────────────────────────────────────────
 
-const ADMIN_ROUTES = new Set(["admin", "superadmin", "manager"]);
-
 function proxyAdminGate(role: string): string {
   if (role === "staff") return "/quotations";
   return null as unknown as string; // no redirect

@@ -82,12 +82,6 @@ function UsersTableInner() {
   const currentUserId = session?.user ? Number(session.user.id) : null;
   const currentUsername = session?.user?.name;
 
-  useEffect(() => {
-    if (urlStoreId) {
-      setFilterStoreId(urlStoreId);
-    }
-  }, [urlStoreId]);
-
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams();
@@ -109,10 +103,12 @@ function UsersTableInner() {
     }
   }, [isSuperAdmin]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchUsers();
     fetchStores();
   }, [fetchUsers, fetchStores]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();

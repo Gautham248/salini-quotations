@@ -51,11 +51,6 @@ function jwtCallback(params: { token: Token; user?: { id: string; role: string; 
   return params.token;
 }
 
-interface SessionUser {
-  role?: string;
-  storeId?: number | null;
-}
-
 function sessionCallback(params: { session: { user?: Record<string, unknown> }; token: Token }): { user: Record<string, unknown> } {
   return {
     user: {

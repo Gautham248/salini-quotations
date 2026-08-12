@@ -1,18 +1,25 @@
 import { amountInWords, type LineTotals } from "@/lib/calculations";
 
 export function QuotationTotals({ totals }: { totals?: Partial<LineTotals> | null }) {
-  const subTotal = totals?.subTotal ?? 0;
+  const subTotalBeforeTax = totals?.subTotalBeforeTax ?? 0;
   const cgst = totals?.cgst ?? 0;
   const sgst = totals?.sgst ?? 0;
   const roundOff = totals?.roundOff ?? 0;
   const netAmount = totals?.netAmount ?? 0;
+  const totalLoadingCharges = totals?.totalLoadingCharges ?? 0;
 
   return (
     <div className="border rounded-md p-4 space-y-1 bg-muted/20">
       <div className="flex justify-between text-sm">
-        <span>Sub Total</span>
-        <span>{subTotal.toFixed(2)}</span>
+        <span>Sub Total (taxable)</span>
+        <span>{subTotalBeforeTax.toFixed(2)}</span>
       </div>
+      {totalLoadingCharges > 0 && (
+        <div className="flex justify-between text-sm">
+          <span>Loading Charges</span>
+          <span>{totalLoadingCharges.toFixed(2)}</span>
+        </div>
+      )}
       <div className="flex justify-between text-sm">
         <span>CGST</span>
         <span>{cgst.toFixed(2)}</span>

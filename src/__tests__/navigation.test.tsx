@@ -101,7 +101,7 @@ describe("Navigation — sidebar and mobile nav", () => {
   // ── Sign out confirmation ──
   describe("sign out flow", () => {
     it("clicking sign out shows confirmation dialog", () => {
-      const { container } = renderWithRole("admin");
+      renderWithRole("admin");
       // Dialog is initially not in DOM with open=false
       // Sign out button exists
       const signOutBtn = screen.getByTitle("Sign Out");

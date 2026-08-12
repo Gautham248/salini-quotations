@@ -55,6 +55,7 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setF(initialData ? { ...DEFAULT, ...initialData } : DEFAULT);
   }, [initialData, open]);
 
@@ -211,7 +212,7 @@ export function ItemForm({ open, onOpenChange, onSave, initialData, units }: {
               <Tags className="h-3.5 w-3.5" />Categories
             </Label>
             {categories.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No categories yet — create them via "Manage Categories".</p>
+              <p className="text-xs text-muted-foreground">No categories yet — create them via &quot;Manage Categories&quot;.</p>
             ) : (
               <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30 max-h-32 overflow-y-auto">
                 {categories.map(cat => {

@@ -9,11 +9,12 @@ import { QuotationTotals } from "@/components/quotations/quotation-totals";
 import { QuotationPreview } from "@/components/quotations/quotation-preview";
 import { StorePicker } from "@/components/ui/store-picker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Save, FileDown, Loader2, FileText, Eye, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 import { ScaledPreview } from "@/components/quotations/scaled-preview";
 import {
@@ -48,17 +49,22 @@ function NewQuotationContent() {
   const storeIdToUse = storeIdParam ? parseInt(storeIdParam) : undefined;
 
   const quote = useQuotation(undefined, storeIdToUse);
+  const idRef = useRef(quote.id);
+  useEffect(() => { idRef.current = quote.id; }, [quote.id]);
 
   useEffect(() => {
-    fetch("/api/settings")
+    const url = storeIdParam
+      ? `/api/settings?storeId=${storeIdParam}`
+      : `/api/settings`;
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) setStoreSettings(data);
       })
       .catch(() => {});
-  }, []);
+  }, [storeIdParam]);
 
-  if (isSuperadmin && !storeIdParam) {
+  if (isSuperadmin && !storeIdParam && !quote.id) {
     return (
       <StorePicker
         onSelect={(storeId) => router.push(`/quotations/new?storeId=${storeId}`)}
@@ -77,7 +83,7 @@ function NewQuotationContent() {
     }
     setFinalizing(true);
     await quote.manualSave({ suppressToast: true });
-    const r = await fetch(`/api/quotations/${quote.id}/finalize`, {
+    const r = await fetch(`/api/quotations/${idRef.current}/finalize`, {
       method: "POST",
     });
     if (!r.ok) {
@@ -111,8 +117,8 @@ function NewQuotationContent() {
       {/* Left Pane */}
       <div className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3.5 sm:px-4 sm:py-3 rounded-lg border shadow-sm max-w-full overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-3">
               <Link href="/quotations">
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
@@ -136,11 +142,11 @@ function NewQuotationContent() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 flex-wrap justify-start md:justify-end shrink-0">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm"
+              className="h-8 text-xs shrink-0"
               onClick={() => quote.manualSave()}
               disabled={quote.saving}
             >
@@ -150,7 +156,7 @@ function NewQuotationContent() {
             {/* Mobile Preview & Download */}
             <Button
               size="sm"
-              className="flex-1 sm:flex-initial h-9 text-xs sm:text-sm lg:hidden"
+              className="h-8 text-xs lg:hidden shrink-0"
               onClick={() => setPreviewOpen(true)}
               disabled={finalizing}
             >
@@ -158,7 +164,7 @@ function NewQuotationContent() {
               <span>Preview &amp; Download</span>
             </Button>
             {/* Desktop Generate PDF */}
-            <Button size="sm" className="hidden lg:flex" onClick={finalize} disabled={finalizing}>
+            <Button size="sm" className="h-8 text-xs hidden lg:flex shrink-0 whitespace-nowrap" onClick={finalize} disabled={finalizing}>
               {finalizing ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
               ) : (
@@ -192,8 +198,25 @@ function NewQuotationContent() {
             onSaveDraft={quote.manualSave}
             onClearDraft={() => {}}
           />
-          <div className="mt-6 pt-4 border-t">
-            <QuotationTotals totals={quote.totals} />
+          <div className="mt-6 pt-4 border-t flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="globalLoadingCharges" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Loading Charges (₹)
+              </label>
+              <Input
+                id="globalLoadingCharges"
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-32 h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
+                value={quote.loadingCharges || ""}
+                onChange={e => quote.setLoadingCharges(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                disabled={quote.saving}
+              />
+            </div>
+            <div className="w-full md:w-80 shrink-0">
+              <QuotationTotals totals={quote.totals} />
+            </div>
           </div>
         </Card>
       </div>
@@ -228,7 +251,7 @@ function NewQuotationContent() {
           <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
-                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <FileText className="h-[1.125rem] w-[1.125rem] text-primary shrink-0" />
                 <SheetTitle className="text-base font-semibold tracking-tight leading-none">
                   PDF Preview
                 </SheetTitle>

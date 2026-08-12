@@ -35,7 +35,7 @@ async function handleFinalize(idStr: string, req: NextRequest) {
       );
     }
 
-    const totals = computeTotals(q.lineItems);
+    const totals = computeTotals(q.lineItems, typeof q.loadingCharges === "number" ? q.loadingCharges : 0);
     const words = amountInWords(totals.netAmount);
 
     let finalData = {

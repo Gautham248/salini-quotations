@@ -3,13 +3,12 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Plus, Search, ShoppingCart, X, Check, PackageOpen,
-  Tags, Trash2, ChevronRight, LayoutList, EyeOff,
+  Tags, Trash2, ChevronRight, LayoutList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -182,6 +181,7 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
     }
 
     if (cachedItems && cachedCategories) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setItems(cachedItems);
       setCategories(cachedCategories);
       setLoading(false);
@@ -285,7 +285,11 @@ export function ItemPicker({ existingLineItems, onConfirm, onSaveDraft, onClearD
   // ── Close & confirm ─────────────────────────────────────────────────────────
 
   function handleAttemptClose() {
-    cart.size > 0 ? setConfirmClose(true) : doClose();
+    if (cart.size > 0) {
+      setConfirmClose(true);
+    } else {
+      doClose();
+    }
   }
 
   function doClose() {

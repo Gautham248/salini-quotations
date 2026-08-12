@@ -3,7 +3,7 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 import path from "path";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient;
+  prisma?: PrismaClient;
   _schemaEnsured?: boolean;
 };
 
@@ -37,9 +37,9 @@ function createPrismaClient(): PrismaClient {
         if (isProduction) return;
 
         // 1. Quotation table check
-        const qCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("Quotation")`);
+        const qCols: Record<string, unknown>[] = await client.$queryRawUnsafe(`PRAGMA table_info("Quotation")`);
         if (Array.isArray(qCols)) {
-          const qNames = new Set(qCols.map((c: any) => c.name));
+          const qNames = new Set(qCols.map((c: Record<string, unknown>) => c.name));
           if (!qNames.has("isLocked")) {
             await client.$executeRawUnsafe(
               `ALTER TABLE "Quotation" ADD COLUMN "isLocked" BOOLEAN NOT NULL DEFAULT 0`
@@ -53,9 +53,9 @@ function createPrismaClient(): PrismaClient {
         }
 
         // 2. QuotationLineItem table checks
-        const liCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("QuotationLineItem")`);
+        const liCols: Record<string, unknown>[] = await client.$queryRawUnsafe(`PRAGMA table_info("QuotationLineItem")`);
         if (Array.isArray(liCols)) {
-          const colNames = new Set(liCols.map((c: any) => c.name));
+          const colNames = new Set(liCols.map((c: Record<string, unknown>) => c.name));
           if (!colNames.has("isLocked")) {
             await client.$executeRawUnsafe(
               `ALTER TABLE "QuotationLineItem" ADD COLUMN "isLocked" BOOLEAN NOT NULL DEFAULT 0`
@@ -76,29 +76,54 @@ function createPrismaClient(): PrismaClient {
               `ALTER TABLE "QuotationLineItem" ADD COLUMN "pieceCount" REAL`
             );
           }
+          if (!colNames.has("loadingCharges")) {
+            await client.$executeRawUnsafe(
+              `ALTER TABLE "QuotationLineItem" ADD COLUMN "loadingCharges" REAL`
+            );
+          }
+          if (!colNames.has("remark")) {
+            await client.$executeRawUnsafe(
+              `ALTER TABLE "QuotationLineItem" ADD COLUMN "remark" TEXT`
+            );
+          }
+          if (!colNames.has("altQty")) {
+            await client.$executeRawUnsafe(
+              `ALTER TABLE "QuotationLineItem" ADD COLUMN "altQty" REAL`
+            );
+          }
+          if (!colNames.has("altUnit")) {
+            await client.$executeRawUnsafe(
+              `ALTER TABLE "QuotationLineItem" ADD COLUMN "altUnit" TEXT`
+            );
+          }
+          if (!colNames.has("gstMode")) {
+            await client.$executeRawUnsafe(
+              `ALTER TABLE "QuotationLineItem" ADD COLUMN "gstMode" TEXT NOT NULL DEFAULT 'inclusive'`
+            );
+          }
         }
 
         // 3. User table — storeId column
-        const uCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("User")`);
-        if (Array.isArray(uCols) && !uCols.some((c: any) => c.name === "storeId")) {
+        const uCols: Record<string, unknown>[] = await client.$queryRawUnsafe(`PRAGMA table_info("User")`);
+        if (Array.isArray(uCols) && !uCols.some((c: Record<string, unknown>) => c.name === "storeId")) {
           await client.$executeRawUnsafe(
             `ALTER TABLE "User" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id")`
           );
         }
 
         // 4. CompanySettings table — storeId column
-        const csCols: any[] = await client.$queryRawUnsafe(`PRAGMA table_info("CompanySettings")`);
-        if (Array.isArray(csCols) && !csCols.some((c: any) => c.name === "storeId")) {
+        const csCols: Record<string, unknown>[] = await client.$queryRawUnsafe(`PRAGMA table_info("CompanySettings")`);
+        if (Array.isArray(csCols) && !csCols.some((c: Record<string, unknown>) => c.name === "storeId")) {
           await client.$executeRawUnsafe(
             `ALTER TABLE "CompanySettings" ADD COLUMN "storeId" INTEGER REFERENCES "Store"("id")`
           );
         }
 
         // 5. New tables: Store, ItemStoreRate, StoreQuotSequence
-        const tables: any[] = await client.$queryRawUnsafe(
+        const tables: Record<string, unknown>[] = await client.$queryRawUnsafe(
           `SELECT name FROM sqlite_master WHERE type='table'`
         );
-        const tableNames = new Set(tables.map((t: any) => t.name));
+        const tableNames = new Set(tables.map((t: Record<string, unknown>) => t.name));
         if (!tableNames.has("Store")) {
           await client.$executeRawUnsafe(`
             CREATE TABLE "Store" (
@@ -137,8 +162,8 @@ function createPrismaClient(): PrismaClient {
           `);
           await client.$executeRawUnsafe(`CREATE UNIQUE INDEX "StoreQuotSequence_storeId_key" ON "StoreQuotSequence"("storeId")`);
         }
-      } catch {
-        // Schema is already up to date via migrations, ignore concurrency locks
+      } catch (e: unknown) {
+        console.error('[db]: self-healing migration error', e instanceof Error ? e.message : String(e));
       }
     })();
   }

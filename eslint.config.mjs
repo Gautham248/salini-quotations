@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone utility scripts:
+    "prisma/apply-migration.ts",
+    "prisma/apply-remote-migration.ts",
+    "prisma/pull-data-remote.ts",
+    "prisma/push-data-remote.ts",
   ]),
 ]);
 

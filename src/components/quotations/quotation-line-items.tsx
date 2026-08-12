@@ -57,7 +57,7 @@ export function QuotationLineItems({
   onUpdate: (k: string, f: keyof LineItem, v: string | number | boolean | null) => void;
   onRemove: (k: string) => void;
   onMove: (k: string, d: "up" | "down") => void;
-  onSyncCatalogItems?: (items: any[]) => void;
+  onSyncCatalogItems?: (items: { masterItemId: number; description: string; unit: string; rate: number; gstPercent: number; qty: number; weightPerUnit: number | null; piecesPerUnit: number | null; alternateUnits?: Array<{ unit: { name: string }; conversionFactor: number }> | null }[]) => void;
   onSaveDraft?: () => void;
   onClearDraft?: () => void;
   readOnly?: boolean;
@@ -98,6 +98,9 @@ export function QuotationLineItems({
                       i.weightPerUnit && i.weightPerUnit > 0 && i.qty > 0
                         ? parseFloat((i.qty * i.weightPerUnit).toFixed(3))
                         : null;
+                    const primaryAlt = i.alternateUnits?.[0];
+                    const altQty = primaryAlt ? parseFloat((i.qty * primaryAlt.conversionFactor).toFixed(3)) : null;
+                    const altUnit = primaryAlt?.unit?.name ?? null;
                     onAdd({
                       key: crypto.randomUUID(),
                       lineNo: lineItems.length + 1,
@@ -114,12 +117,18 @@ export function QuotationLineItems({
                       pieceCount: i.piecesPerUnit ? Math.round(i.qty * i.piecesPerUnit) : null,
                       piecesPerUnit: i.piecesPerUnit,
                       isLocked: false,
+                      remark: "",
+                      gstExcludedRate: 0,
+                      altQty,
+                      altUnit,
+                      gstMode: "inclusive",
+                      loadingCharges: 0,
                     });
                   });
                 }
               }}
-              onSaveDraft={onSaveDraft ?? (() => {})}
-              onClearDraft={onClearDraft ?? (() => {})}
+              onSaveDraft={onSaveDraft ?? (() => { })}
+              onClearDraft={onClearDraft ?? (() => { })}
             />
             <Button
               variant="outline"
@@ -141,6 +150,12 @@ export function QuotationLineItems({
                   pieceCount: null,
                   piecesPerUnit: null,
                   isLocked: false,
+                  remark: "",
+                  gstExcludedRate: 0,
+                  altQty: null,
+                  altUnit: null,
+                  gstMode: "inclusive",
+                  loadingCharges: 0,
                 })
               }
             >
@@ -207,17 +222,20 @@ export function QuotationLineItems({
       </div>
 
       {/* ── Desktop table (hidden below md) ── */}
-      <div className="hidden md:block border rounded-md overflow-hidden bg-card">
+      <div className="hidden md:block border rounded-md overflow-hidden bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-8">#</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead className="w-20">Remark</TableHead>
               <TableHead className="w-16">GST%</TableHead>
               <TableHead className="w-20">Mode</TableHead>
               <TableHead className="w-24">Qty</TableHead>
+              <TableHead className="w-20">Alt Qty</TableHead>
               <TableHead className="w-28">Weight (Kg)</TableHead>
               <TableHead className="w-16">Unit</TableHead>
+              <TableHead className="w-24 text-right">MRP</TableHead>
               <TableHead className="w-24 text-right">Rate</TableHead>
               <TableHead className="w-28 text-right">Net Value</TableHead>
               {!readOnly && <TableHead className="w-28 text-center">Actions</TableHead>}
@@ -227,7 +245,7 @@ export function QuotationLineItems({
             {lineItems.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={readOnly ? 9 : 10}
+                  colSpan={readOnly ? 16 : 17}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No items yet.
@@ -237,9 +255,10 @@ export function QuotationLineItems({
               lineItems.map((item, idx) => {
                 const hasWeight = !!item.weightPerUnit && item.weightPerUnit > 0;
                 const hasPieces = !!item.piecesPerUnit && item.piecesPerUnit > 0;
+                const isCustom = !item.masterItemId;
                 const modeOptions: string[] = ["quantity"];
-                if (hasWeight) modeOptions.push("weight");
-                if (hasPieces) modeOptions.push("pieces");
+                if (hasWeight || isCustom) modeOptions.push("weight");
+                if (hasPieces || isCustom) modeOptions.push("pieces");
 
                 const isItemLocked = Boolean(item.isLocked);
                 const isFieldDisabled = readOnly || (!isAdmin && isItemLocked);
@@ -273,24 +292,40 @@ export function QuotationLineItems({
                       )}
                     </TableCell>
 
-                    <TableCell className="w-16">
+                    <TableCell className="w-20">
+                      {readOnly ? (
+                        <span className="text-sm">{item.remark || "-"}</span>
+                      ) : (
+                        <Input
+                          value={item.remark ?? ""}
+                          disabled={isFieldDisabled}
+                          onChange={e => onUpdate(item.key, "remark", e.target.value)}
+                          placeholder="Brand"
+                          className="h-8 text-sm w-20 px-1.5"
+                        />
+                      )}
+                    </TableCell>
+
+                    <TableCell className="w-20">
                       {readOnly ? (
                         <span className="text-sm">{item.gstPercent}%</span>
                       ) : (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          disabled={isFieldDisabled}
-                          value={item.gstPercent ?? ""}
-                          onChange={e =>
-                            onUpdate(
-                              item.key,
-                              "gstPercent",
-                              e.target.value === "" ? 0 : parseFloat(e.target.value)
-                            )
-                          }
-                          className="h-8 text-sm w-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1.5 text-center"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            disabled={isFieldDisabled}
+                            value={item.gstPercent ?? ""}
+                            onChange={e =>
+                              onUpdate(
+                                item.key,
+                                "gstPercent",
+                                e.target.value === "" ? 0 : parseFloat(e.target.value)
+                              )
+                            }
+                            className="h-8 text-sm w-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1 text-center"
+                          />
+                        </div>
                       )}
                     </TableCell>
 
@@ -303,8 +338,8 @@ export function QuotationLineItems({
                           className="h-8 text-xs border rounded px-1 disabled:opacity-50"
                         >
                           <option value="quantity">Qty</option>
-                          {hasWeight && <option value="weight">Wt</option>}
-                          {hasPieces && <option value="pieces">Pcs</option>}
+                          {(hasWeight || isCustom) && <option value="weight">Wt</option>}
+                          {(hasPieces || isCustom) && <option value="pieces">Pcs</option>}
                         </select>
                       ) : (
                         <span className="text-xs text-muted-foreground">Qty</span>
@@ -312,7 +347,7 @@ export function QuotationLineItems({
                     </TableCell>
 
                     <TableCell className="w-24">
-                      {item.quoteMode === "quantity" ? (
+                      {item.quoteMode === "quantity" || isCustom ? (
                         readOnly ? (
                           <span className="text-sm">{item.qty}</span>
                         ) : (
@@ -334,6 +369,42 @@ export function QuotationLineItems({
                         )
                       ) : (
                         <span className="text-xs text-muted-foreground">(derived)</span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="w-28">
+                      {readOnly ? (
+                        <span className="text-sm">
+                          {item.altQty != null && item.altUnit
+                            ? `${item.altQty} ${item.altUnit}`
+                            : "-"}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Qty"
+                            disabled={isFieldDisabled}
+                            value={item.altQty ?? ""}
+                            onChange={e =>
+                              onUpdate(
+                                item.key,
+                                "altQty",
+                                e.target.value === "" ? null : parseFloat(e.target.value)
+                              )
+                            }
+                            className="h-8 text-xs w-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1 text-center"
+                          />
+                          <Input
+                            placeholder="Unit"
+                            disabled={isFieldDisabled}
+                            value={item.altUnit ?? ""}
+                            onChange={e => onUpdate(item.key, "altUnit", e.target.value)}
+                            className="h-8 text-xs w-12 px-1 text-center"
+                          />
+                        </div>
                       )}
                     </TableCell>
 
@@ -368,6 +439,7 @@ export function QuotationLineItems({
                       ) : (
                         <Input
                           value={item.unit}
+                          placeholder="Unit"
                           disabled={isFieldDisabled}
                           onChange={e => onUpdate(item.key, "unit", e.target.value)}
                           className="h-8 text-sm w-16 px-2 text-center"
@@ -395,6 +467,12 @@ export function QuotationLineItems({
                           className="h-8 text-sm text-right w-24 ml-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-2"
                         />
                       )}
+                    </TableCell>
+
+                    <TableCell className="w-24 text-right">
+                      <span className="text-xs text-muted-foreground">
+                        {item.gstExcludedRate != null ? item.gstExcludedRate.toFixed(2) : "-"}
+                      </span>
                     </TableCell>
 
                     <TableCell className="text-right font-medium text-sm">
@@ -503,6 +581,16 @@ export function QuotationLineItems({
                     className="h-9"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Remark</Label>
+                  <Input
+                    value={item.remark ?? ""}
+                    disabled={isFieldDisabled}
+                    onChange={e => upd("remark", e.target.value)}
+                    placeholder="Brand / Narration"
+                    className="h-9"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Qty</Label>
@@ -524,7 +612,7 @@ export function QuotationLineItems({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Rate (₹)</Label>
+                    <Label className="text-xs font-medium">MRP (₹)</Label>
                     <Input
                       type="number" step="0.01" min="0"
                       value={item.rate ?? ""}
@@ -553,21 +641,39 @@ export function QuotationLineItems({
                       className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
-                  {(hasWeight || hasPieces) && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Mode</Label>
-                      <select
-                        value={item.quoteMode}
-                        disabled={isFieldDisabled}
-                        onChange={e => upd("quoteMode", e.target.value)}
-                        className="h-9 w-full text-sm border rounded px-2 disabled:opacity-50"
-                      >
-                        <option value="quantity">Qty</option>
-                        {hasWeight && <option value="weight">Weight</option>}
-                        {hasPieces && <option value="pieces">Pieces</option>}
-                      </select>
-                    </div>
-                  )}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Alt Qty</Label>
+                    <Input
+                      type="number" step="0.01" min="0" placeholder="Alt Qty"
+                      value={item.altQty ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("altQty", e.target.value === "" ? null : parseFloat(e.target.value))}
+                      className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Alt Unit</Label>
+                    <Input
+                      placeholder="e.g. Box"
+                      value={item.altUnit ?? ""}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("altUnit", e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Mode</Label>
+                    <select
+                      value={item.quoteMode}
+                      disabled={isFieldDisabled}
+                      onChange={e => upd("quoteMode", e.target.value)}
+                      className="h-9 w-full text-sm border rounded px-2 disabled:opacity-50"
+                    >
+                      <option value="quantity">Qty</option>
+                      {(hasWeight || !item.masterItemId) && <option value="weight">Weight</option>}
+                      {(hasPieces || !item.masterItemId) && <option value="pieces">Pieces</option>}
+                    </select>
+                  </div>
                 </div>
                 <div className="pt-2 border-t flex items-center justify-between">
                   <div className="text-sm">

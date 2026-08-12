@@ -6,7 +6,7 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-function Select<Value = any>({
+function Select<Value = React.ReactNode>({
   children,
   items: itemsProp,
   ...props
@@ -47,6 +47,7 @@ function SelectValue({ className, children, placeholder, ...props }: SelectPrimi
       data-slot="select-value"
       className={cn("flex flex-1 text-left", className)}
       placeholder={placeholder}
+      // eslint-disable-next-line react/no-children-prop
       children={children}
       {...props}
     />

@@ -3,20 +3,35 @@ export function round(num: number, decimals: number = 2): number {
   return Math.round((num + Number.EPSILON) * factor) / factor;
 }
 
+export function computeGstExcludedRate(rate: number, gstPercent: number): number {
+  if (gstPercent < 0 || gstPercent > 100) return rate;
+  return round(rate / (1 + gstPercent / 100));
+}
+
+export function computeLineItemGst(netValue: number, gstPercent: number): number {
+  if (gstPercent <= 0) return 0;
+  return round(netValue * gstPercent / (100 + gstPercent));
+}
+
 export interface LineItemInput {
   qty: number;
   rate: number;
   gstPercent: number;
   netValue?: number;
+  gstExcludedRate?: number;
+  gstMode?: string;
+  loadingCharges?: number | null;
 }
 
 export interface LineTotals {
   subTotal: number;
+  subTotalBeforeTax: number;
   cgst: number;
   sgst: number;
   roundOff: number;
   netAmount: number;
   totalGst: number;
+  totalLoadingCharges: number;
 }
 
 export function computeNetValue(qty: number, rate: number): number {
@@ -30,15 +45,32 @@ export function computeLineNetValue(item: LineItemInput): number {
   return computeNetValue(item.qty, item.rate);
 }
 
-export function computeTotals(items: LineItemInput[]): LineTotals {
+export function computeTotals(items: LineItemInput[], globalLoadingCharges: number = 0): LineTotals {
+  const totalLoadingCharges = round(globalLoadingCharges);
   const subTotal = round(items.reduce((s, i) => s + computeLineNetValue(i), 0));
-  const totalGst = round(items.reduce((s, i) => s + computeLineNetValue(i) * (i.gstPercent / 100), 0));
+
+  let subTotalBeforeTax = 0;
+  let totalGst = 0;
+
+  for (const i of items) {
+    const isInclusive = i.gstMode === "inclusive";
+    if (isInclusive) {
+      const excluded = i.gstExcludedRate ?? computeGstExcludedRate(i.rate, i.gstPercent);
+      subTotalBeforeTax += round(computeNetValue(i.qty, excluded));
+      totalGst += round(computeLineItemGst(computeLineNetValue(i), i.gstPercent));
+    } else {
+      subTotalBeforeTax += computeLineNetValue(i);
+      totalGst += round(computeLineNetValue(i) * (i.gstPercent / 100));
+    }
+  }
+
   const cgst = round(totalGst / 2);
-  const sgst = round(totalGst / 2);
-  const rawTotal = subTotal + cgst + sgst;
+  const sgst = totalGst - cgst;
+
+  const rawTotal = subTotalBeforeTax + cgst + sgst + totalLoadingCharges;
   const netAmount = Math.round(rawTotal);
   const roundOff = round(netAmount - rawTotal);
-  return { subTotal, cgst, sgst, roundOff, netAmount, totalGst };
+  return { subTotal, subTotalBeforeTax, cgst, sgst, roundOff, netAmount, totalGst, totalLoadingCharges };
 }
 
 const ONES = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];

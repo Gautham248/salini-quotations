@@ -51,6 +51,10 @@ model CompanySettings {
   bankDetails    String
   disclaimerText String   @default("Certified that the particulars given above are true and correct.")
   loadingNote    String   @default("LOADING CHARGE AND TRANSPORTATION CHARGES EXTRA")
+  paymentQrCode  String?
+  pan            String?
+  declarationText String? @default("We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.")
+  jurisdiction   String?  @default("Subject to Pala Jurisdiction")
   updatedAt      DateTime @updatedAt
 }
 
@@ -149,6 +153,13 @@ model Quotation {
   customerAddress String?
   customerPlace   String?
   customerGstin   String?
+  customerPhone   String?
+  customerEmail   String?
+  shipToName      String?
+  shipToAddress   String?
+  shipToPlace     String?
+  shipToGstin     String?
+  deliveryNote    String?
   deliveryTerms   String?
   gstNote         String?
   validity        String               @default("LIMITED")
@@ -159,6 +170,7 @@ model Quotation {
   roundOff        Float?
   netAmount       Float?
   amountInWords   String?
+  loadingCharges  Float?
   isLocked        Boolean              @default(false)
   createdBy       User                 @relation("CreatedBy", fields: [createdById], references: [id])
   createdById     Int
@@ -193,6 +205,11 @@ model QuotationLineItem {
   weightKg     Float?
   pieceCount   Float?
   isLocked     Boolean     @default(false)
+  remark       String?
+  altQty       Float?
+  altUnit      String?
+  gstMode      String      @default("inclusive")
+  loadingCharges Float?
 }
 
 model StoreQuotSequence {
