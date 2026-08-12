@@ -4,7 +4,7 @@ import { AnalyticsDashboard } from "@/components/dashboard/analytics-dashboard";
 
 // Mock SWR
 vi.mock("swr", () => ({
-  default: vi.fn((_url: string) => ({
+  default: vi.fn(() => ({
     data: null,
     isLoading: true,
     isValidating: false,

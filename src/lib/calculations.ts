@@ -47,28 +47,25 @@ export function computeLineNetValue(item: LineItemInput): number {
 
 export function computeTotals(items: LineItemInput[], globalLoadingCharges: number = 0): LineTotals {
   const totalLoadingCharges = round(globalLoadingCharges);
-  const isInclusive = items.length > 0 && items[0].gstMode === "inclusive";
-
   const subTotal = round(items.reduce((s, i) => s + computeLineNetValue(i), 0));
-  let subTotalBeforeTax: number;
-  let cgst: number;
-  let sgst: number;
-  let totalGst: number;
 
-  if (isInclusive) {
-    subTotalBeforeTax = round(items.reduce((s, i) => {
+  let subTotalBeforeTax = 0;
+  let totalGst = 0;
+
+  for (const i of items) {
+    const isInclusive = i.gstMode === "inclusive";
+    if (isInclusive) {
       const excluded = i.gstExcludedRate ?? computeGstExcludedRate(i.rate, i.gstPercent);
-      return s + computeNetValue(i.qty, excluded);
-    }, 0));
-    totalGst = round(items.reduce((s, i) => s + computeLineItemGst(computeLineNetValue(i), i.gstPercent), 0));
-    cgst = round(totalGst / 2);
-    sgst = round(totalGst / 2);
-  } else {
-    subTotalBeforeTax = subTotal;
-    totalGst = round(items.reduce((s, i) => s + computeLineNetValue(i) * (i.gstPercent / 100), 0));
-    cgst = round(totalGst / 2);
-    sgst = round(totalGst / 2);
+      subTotalBeforeTax += round(computeNetValue(i.qty, excluded));
+      totalGst += round(computeLineItemGst(computeLineNetValue(i), i.gstPercent));
+    } else {
+      subTotalBeforeTax += computeLineNetValue(i);
+      totalGst += round(computeLineNetValue(i) * (i.gstPercent / 100));
+    }
   }
+
+  const cgst = round(totalGst / 2);
+  const sgst = totalGst - cgst;
 
   const rawTotal = subTotalBeforeTax + cgst + sgst + totalLoadingCharges;
   const netAmount = Math.round(rawTotal);

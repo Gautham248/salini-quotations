@@ -72,7 +72,7 @@ export async function PUT(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const b = await req.json();
+  const b = await req.json().catch(() => ({}));
 
   // Check document-level lock for non-admin users
   if (ex.isLocked && !isAdmin) {

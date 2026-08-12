@@ -76,7 +76,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
   const [isLocked, setIsLocked] = useState(false);
   const [status, setStatus] = useState("draft");
   const [storeId, setStoreId] = useState<number | undefined>(storeIdOverride);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!existingId);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -203,7 +203,7 @@ export function useQuotation(existingId?: number, storeIdOverride?: number) {
           itemsRef.current = loadedItems;
           setLoading(false);
         });
-    } else setLoading(false);
+    }
   }, [existingId]);
 
   function markDirty() { dirtiedRef.current = true; setDirty(true); }

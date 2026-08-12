@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Save, FileDown, Loader2, FileText, Eye, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { StorePreviewSettings } from "@/components/quotations/quotation-preview";
 import { ScaledPreview } from "@/components/quotations/scaled-preview";
 import {
@@ -49,6 +49,8 @@ function NewQuotationContent() {
   const storeIdToUse = storeIdParam ? parseInt(storeIdParam) : undefined;
 
   const quote = useQuotation(undefined, storeIdToUse);
+  const idRef = useRef(quote.id);
+  useEffect(() => { idRef.current = quote.id; }, [quote.id]);
 
   useEffect(() => {
     const url = storeIdParam
@@ -81,7 +83,7 @@ function NewQuotationContent() {
     }
     setFinalizing(true);
     await quote.manualSave({ suppressToast: true });
-    const r = await fetch(`/api/quotations/${quote.id}/finalize`, {
+    const r = await fetch(`/api/quotations/${idRef.current}/finalize`, {
       method: "POST",
     });
     if (!r.ok) {
@@ -249,7 +251,7 @@ function NewQuotationContent() {
           <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
-                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <FileText className="h-[1.125rem] w-[1.125rem] text-primary shrink-0" />
                 <SheetTitle className="text-base font-semibold tracking-tight leading-none">
                   PDF Preview
                 </SheetTitle>

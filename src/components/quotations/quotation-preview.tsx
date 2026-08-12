@@ -1,6 +1,6 @@
 "use client";
 import { formatDate } from "@/lib/utils";
-import { amountInWords, computeGstExcludedRate, computeLineItemGst } from "@/lib/calculations";
+import { amountInWords, computeGstExcludedRate } from "@/lib/calculations";
 import type { QH } from "./quotation-header-form";
 import type { LineItem } from "@/hooks/use-quotation";
 
@@ -201,6 +201,7 @@ export function QuotationPreview({
         <div className="flex gap-2 mt-1">
           {cs.paymentQrCode && (
             <div className="shrink-0 flex flex-col items-center justify-start gap-0.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={cs.paymentQrCode}
                 alt="Payment QR Code"

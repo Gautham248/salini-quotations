@@ -6,15 +6,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 export function NavigationProgress() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const rafRef = useRef<number>(0);
   const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Start the bar as soon as the URL changes
     let cancelled = false;
-
-    setVisible(true);
 
     // Animate to ~70% quickly, then hold
     let start: number | null = null;
@@ -33,12 +31,13 @@ export function NavigationProgress() {
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
-      // Complete the bar to 100% and hide
-      if (barRef.current) {
-        barRef.current.style.transform = "scaleX(1)";
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const bar = barRef.current;
+      if (bar) {
+        bar.style.transform = "scaleX(1)";
         setTimeout(() => {
-          if (barRef.current) {
-            barRef.current.style.transform = "scaleX(0)";
+          if (bar) {
+            bar.style.transform = "scaleX(0)";
             setVisible(false);
           }
         }, 200);

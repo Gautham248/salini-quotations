@@ -9,8 +9,7 @@ const prisma = new PrismaClient({
   adapter: new PrismaLibSql({ url: process.env.DATABASE_URL || "file:./dev.db" }),
 });
 
-const imports: typeof import("@/lib/quot-no") = {} as any;
-let nextQuotNo: typeof imports.nextQuotNo;
+let nextQuotNo: (storeId: number) => Promise<string>;
 
 beforeAll(async () => {
   const mod = await import("@/lib/quot-no");

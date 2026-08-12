@@ -459,6 +459,7 @@ function QuotationPDFDocument({
           <View style={styles.qrFooterRow}>
             {cs.paymentQrCode ? (
               <View style={styles.qrBlock}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image
                   src={cs.paymentQrCode}
                   style={{ width: 64, height: 64 }}

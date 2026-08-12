@@ -93,7 +93,6 @@ describe("ItemForm — alternate units rendering", () => {
     });
     expect(document.body.textContent).toContain("Alternate Units");
     // No alternate unit entries rendered in the list
-    const addButton = document.body.querySelector("button");
     // The "Add" button should be disabled since no selection made
     expect(document.body.textContent).toContain("Add");
   });

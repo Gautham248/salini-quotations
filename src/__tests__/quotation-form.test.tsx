@@ -28,7 +28,7 @@ describe("QuotationHeaderForm", () => {
 
   it("renders customer name input", () => {
     render(<QuotationHeaderForm header={makeHeader()} onChange={onChange} />);
-    const input = screen.getByPlaceholderText("Enter customer / company name") as HTMLInputElement;
+    const input = screen.getByPlaceholderText("Enter buyer / company name") as HTMLInputElement;
     expect(input).toBeDefined();
     expect(input.value).toBe("");
   });
@@ -41,7 +41,6 @@ describe("QuotationHeaderForm", () => {
 
   it("renders date input", () => {
     render(<QuotationHeaderForm header={makeHeader()} onChange={onChange} />);
-    const inputs = screen.getAllByRole("textbox");
     // Date input has type="date" so it won't match textbox. Use type lookup.
     const dateInput = document.querySelector('input[type="date"]');
     expect(dateInput).toBeDefined();
@@ -83,14 +82,14 @@ describe("QuotationHeaderForm", () => {
 
   it("accepts input for customer name (field exists and is enabled)", () => {
     render(<QuotationHeaderForm header={makeHeader()} onChange={onChange} />);
-    const input = screen.getByPlaceholderText("Enter customer / company name") as HTMLInputElement;
+    const input = screen.getByPlaceholderText("Enter buyer / company name") as HTMLInputElement;
     expect(input).toBeDefined();
     expect(input.disabled).toBe(false);
   });
 
   it("disables inputs when readOnly", () => {
     render(<QuotationHeaderForm header={makeHeader()} onChange={onChange} readOnly />);
-    const input = screen.getByPlaceholderText("Enter customer / company name") as HTMLInputElement;
+    const input = screen.getByPlaceholderText("Enter buyer / company name") as HTMLInputElement;
     expect(input.disabled).toBe(true);
   });
 

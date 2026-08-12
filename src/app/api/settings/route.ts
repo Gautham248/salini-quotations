@@ -1,23 +1,24 @@
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth, requireAdmin } from "@/lib/auth-guards";
 import { resolveStoreId } from "@/lib/auth-guards";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   await requireAuth();
   const storeId = await resolveStoreId(req);
   if (!storeId) {
-    return Response.json({ error: "Store context required — use ?storeId= to select a store" }, { status: 400 });
+    return NextResponse.json({ error: "Store context required — use ?storeId= to select a store" }, { status: 400 });
   }
 
   const s = await db.companySettings.findUnique({ where: { storeId } });
-  return Response.json(s);
+  return NextResponse.json(s);
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
   await requireAdmin();
   const storeId = await resolveStoreId(req);
   if (!storeId) {
-    return Response.json({ error: "Store context required" }, { status: 400 });
+    return NextResponse.json({ error: "Store context required" }, { status: 400 });
   }
 
   const b = await req.json().catch(() => ({}));
@@ -42,7 +43,7 @@ export async function PUT(req: Request) {
         jurisdiction: b.jurisdiction ?? existing.jurisdiction,
       },
     });
-    return Response.json(u);
+    return NextResponse.json(u);
   }
 
   const c = await db.companySettings.create({
@@ -63,5 +64,5 @@ export async function PUT(req: Request) {
       jurisdiction: b.jurisdiction || null,
     },
   });
-  return Response.json(c, { status: 201 });
+  return NextResponse.json(c, { status: 201 });
 }

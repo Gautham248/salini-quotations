@@ -4,10 +4,10 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { db } from "@/lib/db";
 
 describe("Analytics Endpoint & Metrics Suite", () => {
-  let testStore: any;
-  let adminUser: any;
-  let sampleQuote1: any;
-  let sampleQuote2: any;
+  let testStore: { id: number; name: string };
+  let adminUser: { id: number; role: string };
+  let sampleQuote1: { id: number };
+  let sampleQuote2: { id: number };
 
   beforeAll(async () => {
     const ts = Date.now();

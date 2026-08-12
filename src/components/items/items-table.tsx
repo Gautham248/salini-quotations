@@ -90,6 +90,7 @@ export function ItemsTable() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems();
     fetchUnits();
   }, [fetchItems, fetchUnits]);

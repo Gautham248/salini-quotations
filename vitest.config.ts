@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    exclude: ["src/__tests__/flows/**"],
+    exclude: ["src/__tests__/flows/**", "node_modules/**"],
     env: {
       NODE_ENV: "development",
     },

@@ -51,6 +51,7 @@ function QuotationsContent() {
   const router = useRouter();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (urlStatus) setFilterStatus(urlStatus);
     else setFilterStatus("all");
     if (urlPeriod) setFilterPeriod(urlPeriod);

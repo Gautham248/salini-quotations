@@ -87,7 +87,6 @@ export async function POST(req: NextRequest) {
   }
 
   const b = await req.json().catch(() => ({}));
-
   const customerName =
     typeof b.customerName === "string" && b.customerName.trim()
       ? b.customerName.trim()
@@ -119,7 +118,7 @@ export async function POST(req: NextRequest) {
       validity: b.validity || "LIMITED",
       paymentTerms: b.paymentTerms || "READY PAYMENT",
       createdById: s.user.id,
-      loadingCharges: (b.loadingCharges as number) || null,
+      loadingCharges: typeof b.loadingCharges === "number" ? b.loadingCharges : null,
     },
   });
 
@@ -138,7 +137,7 @@ export async function POST(req: NextRequest) {
           gstExcludedRate: typeof i.gstExcludedRate === "number" ? i.gstExcludedRate : undefined,
           gstMode: (i.gstMode as string) || "inclusive",
         })),
-        (b.loadingCharges as number) || 0
+        typeof b.loadingCharges === "number" ? b.loadingCharges : 0
       );
 
       await db.quotationLineItem.createMany({
@@ -160,7 +159,7 @@ export async function POST(req: NextRequest) {
           altQty: (item.altQty as number) || null,
           altUnit: (item.altUnit as string) || null,
           gstMode: (item.gstMode as string) || "inclusive",
-          loadingCharges: (item.loadingCharges as number) || null,
+          loadingCharges: typeof item.loadingCharges === "number" ? item.loadingCharges : null,
         })),
       });
 

@@ -5,10 +5,10 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 describe("User Account Deletion & Manager Warning Suite", () => {
-  let testStore: any;
-  let adminUser: any;
-  let managerUser: any;
-  let staffUser: any;
+  let testStore: { id: number; name: string };
+  let adminUser: { id: number; role: string };
+  let managerUser: { id: number; role: string; storeId: number | null };
+  let staffUser: { id: number };
 
   beforeAll(async () => {
     const ts = Date.now();

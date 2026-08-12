@@ -85,7 +85,6 @@ export function Sidebar() {
       : staffLinks;
 
   const bottomLinks = links.slice(0, BOTTOM_BAR_COUNT);
-  const moreLinks = links.slice(BOTTOM_BAR_COUNT);
 
   return (
     <>
@@ -248,7 +247,7 @@ export function Sidebar() {
                 onClick={() => setMoreOpen(false)}
                 className="h-9 w-9 rounded-full flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border/60 shrink-0"
               >
-                <X className="h-4.5 w-4.5" />
+                <X className="h-[1.125rem] w-[1.125rem]" />
               </button>
             </div>
           </SheetHeader>

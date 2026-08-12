@@ -11,11 +11,6 @@ const BASE = process.env.FLOW_TEST_BASE_URL || "http://localhost:3456";
 
 // ── Cookie jar ───────────────────────────────────────────────────────────────
 
-interface AuthCookies {
-  sessionToken: string;
-  csrfToken?: string;
-}
-
 let _cookies: Partial<Record<string, string>> = {};
 
 function clearCookies() {

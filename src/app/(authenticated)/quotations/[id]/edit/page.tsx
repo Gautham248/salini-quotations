@@ -406,7 +406,7 @@ export default function EditQuotationPage({
           <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
-                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <FileText className="h-[1.125rem] w-[1.125rem] text-primary shrink-0" />
                 <SheetTitle className="text-base font-semibold tracking-tight leading-none">
                   PDF Preview
                 </SheetTitle>

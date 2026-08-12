@@ -42,12 +42,13 @@ export default function ViewQuotationPage({
   const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     fetch(`/api/quotations/${id}`)
       .then((r) => r.json())
       .then((d) => {
-        setQ(d);
-        setLoading(false);
+        if (!cancelled) { setQ(d); setLoading(false); }
       });
+    return () => { cancelled = true; };
   }, [id]);
 
   async function duplicate() {
@@ -83,7 +84,7 @@ export default function ViewQuotationPage({
   const lineItems = (
     (q.lineItems as Array<Record<string, unknown>>) || []
   ).map((item: Record<string, unknown>) => ({
-    key: crypto.randomUUID(),
+    key: `li-${item.id as number}-${item.lineNo as number}`,
     id: item.id as number,
     lineNo: item.lineNo as number,
     masterItemId: (item.masterItemId as number) || null,
@@ -116,7 +117,7 @@ export default function ViewQuotationPage({
     customerAddress: (q.customerAddress as string) || "",
     customerPlace: (q.customerPlace as string) || "",
     customerGstin: (q.customerGstin as string) || "",
-    quotDate: new Date(q.quotDate as string).toISOString().slice(0, 10),
+      quotDate: (() => { const d = new Date(q.quotDate as string); return !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10); })(),
     refNo: q.refNo as string,
     deliveryTerms: (q.deliveryTerms as string) || "",
     gstNote: (q.gstNote as string) || "",
@@ -289,7 +290,7 @@ export default function ViewQuotationPage({
           <SheetHeader className="px-5 pt-1 pb-3 border-b space-y-0 text-left bg-muted/30">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
-                <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+                <FileText className="h-[1.125rem] w-[1.125rem] text-primary shrink-0" />
                 <SheetTitle className="text-base font-semibold tracking-tight leading-none">
                   PDF Preview
                 </SheetTitle>

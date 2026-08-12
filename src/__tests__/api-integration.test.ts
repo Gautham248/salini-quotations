@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tests: API error handling and response shapes (integration logic)
@@ -223,9 +223,4 @@ function mockAnalyticsResponse() {
 
 function apiErrorResponse(error: string, status: number) {
   return { error, status };
-}
-
-// Extend expect for property checks
-function toHaveProperty(this: unknown, obj: unknown, prop: string): boolean {
-  return obj !== null && typeof obj === "object" && prop in (obj as object);
 }

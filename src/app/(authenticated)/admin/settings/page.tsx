@@ -245,6 +245,7 @@ export default function SettingsPage() {
                     </p>
                     {s.paymentQrCode ? (
                       <div className="flex items-start gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={s.paymentQrCode}
                           alt="Payment QR Code"

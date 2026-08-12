@@ -57,7 +57,7 @@ export function QuotationLineItems({
   onUpdate: (k: string, f: keyof LineItem, v: string | number | boolean | null) => void;
   onRemove: (k: string) => void;
   onMove: (k: string, d: "up" | "down") => void;
-  onSyncCatalogItems?: (items: any[]) => void;
+  onSyncCatalogItems?: (items: { masterItemId: number; description: string; unit: string; rate: number; gstPercent: number; qty: number; weightPerUnit: number | null; piecesPerUnit: number | null; alternateUnits?: Array<{ unit: { name: string }; conversionFactor: number }> | null }[]) => void;
   onSaveDraft?: () => void;
   onClearDraft?: () => void;
   readOnly?: boolean;

@@ -14,7 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, Store, Pencil, CheckCircle2, Ban, Trash2, AlertTriangle, QrCode, Upload } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface StoreInfo {
   id: number;
@@ -661,6 +660,7 @@ export default function StoresPage() {
                   </p>
                   {editForm.paymentQrCode ? (
                     <div className="flex items-start gap-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={editForm.paymentQrCode}
                         alt="Payment QR Code"
@@ -751,7 +751,7 @@ export default function StoresPage() {
           <DialogHeader className="space-y-2">
             <div className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5 shrink-0" />
-              <DialogTitle className="text-lg font-semibold">Delete "{deleteTarget?.name}"?</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">Delete &quot;{deleteTarget?.name}&quot;?</DialogTitle>
             </div>
           </DialogHeader>
 
